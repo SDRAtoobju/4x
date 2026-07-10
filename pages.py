@@ -8,7 +8,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ورود · X4G</title>
+<title>ورود · 4SAd</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -60,15 +60,15 @@ input:focus+.ic{color:var(--accent)}
 <div class="wrap">
   <div class="card">
     <div class="brand">
-      <div class="brand-img"><img src="data:image/png;base64,__LOGO_B64__" alt="X4G"></div>
-      <div><div class="brand-name">X4G</div><div class="brand-sub">v9.5</div></div>
+      <div class="brand-img"><img src="data:image/png;base64,__LOGO_B64__" alt="4SAd"></div>
+      <div><div class="brand-name">4SAd</div><div class="brand-sub">v9.5</div></div>
     </div>
     <h1>ورود به پنل</h1>
     <p class="sub">رمز عبور را برای دسترسی به داشبورد وارد کنید</p>
     <div class="err" id="err"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
     <div class="hint">
       <span class="hint-label">رمز پیش‌فرض سیستم</span>
-      <span class="hint-val" onclick="document.getElementById('pw').value='X4GKING';document.getElementById('pw').focus()">X4GKING</span>
+      <span class="hint-val" onclick="document.getElementById('pw').value='SadraMHP';document.getElementById('pw').focus()">SadraMHP</span>
     </div>
     <form id="form">
       <div class="field">
@@ -80,7 +80,7 @@ input:focus+.ic{color:var(--accent)}
       </div>
       <button class="btn" type="submit" id="btn"><i class="ti ti-login-2"></i> ورود به داشبورد</button>
     </form>
-    <div class="footer">پشتیبانی <a href="https://t.me/Farajian2004f" target="_blank"><i class="ti ti-brand-telegram"></i>@Farajian2004f</a></div>
+    <div class="footer">پشتیبانی <a href="Sadra" target="_blank"><i class="ti ti-brand-telegram"></i>Sadra</a></div>
   </div>
 </div>
 <script>

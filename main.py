@@ -2186,13 +2186,29 @@ def now_ir() -> datetime:
     return datetime.now(IRAN_TZ)
 
 def client_ip(request: Request | WebSocket) -> str:
-    fwd = request.headers.get("x-forwarded-for")
-    if fwd:
-        return fwd.split(",")[0].strip()
-    real_ip = request.headers.get("x-real-ip")
-    if real_ip:
-        return real_ip.strip()
-    return request.client.host if request.client else "نامشخص"
+    # 1. کلودفلر (دقیق‌ترین آی‌پی در صورت استفاده از CDN)
+    if cf := request.headers.get("cf-connecting-ip"):
+        return cf.split(",")[0].strip()
+    
+    # 2. آروان‌کلود و سایر CDNها
+    if true_ip := request.headers.get("true-client-ip"):
+        return true_ip.split(",")[0].strip()
+    
+    # 3. هدر استاندارد فوروارد (اولین آی‌پی، آی‌پی واقعی کاربر است)
+    if fwd := request.headers.get("x-forwarded-for"):
+        ip = fwd.split(",")[0].strip()
+        if ip: return ip
+        
+    # 4. آی‌پی واقعی ثبت شده توسط Nginx/Envoy
+    if real := request.headers.get("x-real-ip"):
+        return real.split(",")[0].strip()
+        
+    # 5. حالت بازگشتی (پیش‌فرض لوفی)
+    ip = request.client.host if request.client else "نامشخص"
+    # پاک کردن فرمت اضافی IPv6 در پایتون
+    if ip and ip.startswith("::ffff:"):
+        ip = ip.replace("::ffff:", "")
+    return ip
 
 def unique_ips_for_uuid(uuid: str) -> set:
     return {c.get("ip") for c in connections.values() if c.get("uuid") == uuid and c.get("ip")}
@@ -2758,7 +2774,7 @@ async def check_and_use(uid: str, n: int) -> bool:
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):
     conn_info = connections.get(conn_id)
-    local_bytes = 0  # شمارنده محلی برای افزایش سرعت
+    local_bytes = 0
     try:
         while True:
             msg = await ws.receive()
@@ -2769,8 +2785,8 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            # آپدیت حجم کاربر فقط به ازای هر 512 کیلوبایت (کاهش شدید درگیری CPU)
-            if local_bytes >= 524288:
+            # ثبت ترافیک هر 256KB برای واکنش‌گرایی سریع‌تر (بدون فشار به CPU)
+            if local_bytes >= 262144: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -2783,11 +2799,11 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            if writer.transport.get_write_buffer_size() > 524288: 
+            # درین کردنِ زودهنگام روی 64KB تا جریان آپلود پیوسته (Smooth) بماند
+            if writer.transport.get_write_buffer_size() > 65536: 
                 await writer.drain()
     except Exception: pass
     finally:
-        # ثبت باقیمانده‌ی ترافیک هنگام قطع اتصال
         if local_bytes > 0:
             await check_and_use(uid, local_bytes)
             if conn_info: conn_info["bytes"] += local_bytes
@@ -2797,17 +2813,16 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
 async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: str, uid: str):
     first = True
     conn_info = connections.get(conn_id)
-    local_bytes = 0  # شمارنده محلی دانلود
+    local_bytes = 0
     try:
         while True:
-            data = await reader.read(RELAY_BUF)
+            data = await reader.read(65536) # خواندن نرم و پیوسته
             if not data: break
             
             size = len(data)
             local_bytes += size
             
-            # آپدیت حجم کاربر به ازای هر 512 کیلوبایت (پرواز سرعت دانلود)
-            if local_bytes >= 524288:
+            if local_bytes >= 262144: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -2819,13 +2834,17 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
                 
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
+            
+            # خط جادویی: اجازه می‌دهد رویدادهای زنده نگه‌داشتنِ WebSocket (مثل PING/PONG)
+            # نفس بکشند و از گیر کردنِ ویدیوهای یوتیوب (Bufferbloat) کاملاً جلوگیری شود.
+            await asyncio.sleep(0)
+            
     except Exception: pass
     finally:
-        # ثبت باقیمانده‌ی ترافیک دانلود هنگام قطع اتصال
         if local_bytes > 0:
             await check_and_use(uid, local_bytes)
             if conn_info: conn_info["bytes"] += local_bytes
-
+    
 @app.websocket("/ws/{uuid}")
 @app.websocket("/upgrade/{uuid}")
 async def websocket_tunnel(ws: WebSocket, uuid: str):

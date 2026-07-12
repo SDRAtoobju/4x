@@ -1,5 +1,3 @@
-
-
 import asyncio
 import base64
 import hashlib
@@ -2726,7 +2724,16 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
-RELAY_BUF = 256 * 1024
+RELAY_BUF = 65536  # کاهش به 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
+
+def _tune_socket(writer: asyncio.StreamWriter):
+    """تنظیمات سوکت برای کاهش پینگ و جلوگیری از تاخیر بسته‌ها (TCP_NODELAY)"""
+    try:
+        sock = writer.transport.get_extra_info("socket")
+        if sock:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    except Exception:
+        pass
 
 async def parse_vless_header(chunk: bytes):
     if len(chunk) < 24: raise ValueError("chunk too small")
@@ -2742,7 +2749,6 @@ async def parse_vless_header(chunk: bytes):
     return command, address, port, chunk[pos:]
 
 async def check_and_use(uid: str, n: int) -> bool:
-    """بدون قفل (Lock-free) برای حداکثر سرعت throughput"""
     link = LINKS.get(uid)
     if not link or not is_link_allowed(link): return False
     link["used_bytes"] += n
@@ -2752,6 +2758,7 @@ async def check_and_use(uid: str, n: int) -> bool:
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):
     conn_info = connections.get(conn_id)
+    local_bytes = 0  # شمارنده محلی برای افزایش سرعت
     try:
         while True:
             msg = await ws.receive()
@@ -2759,47 +2766,68 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             data = msg.get("bytes") or (msg.get("text") or "").encode()
             if not data: continue
             
-            if not await check_and_use(uid, len(data)):
-                await ws.close(code=1008); break
+            size = len(data)
+            local_bytes += size
             
-            # Speed Limit
+            # آپدیت حجم کاربر فقط به ازای هر 512 کیلوبایت (کاهش شدید درگیری CPU)
+            if local_bytes >= 524288:
+                if not await check_and_use(uid, local_bytes):
+                    await ws.close(code=1008); break
+                if conn_info: conn_info["bytes"] += local_bytes
+                local_bytes = 0
+            
             if link := LINKS.get(uid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uid, rate).consume(len(data))
+                if rate > 0: await _get_bucket(uid, rate).consume(size)
                 
             stats["total_requests"] += 1
-            if conn_info: conn_info["bytes"] += len(data)
-            
             writer.write(data)
-            # فقط زمانی منتظر خالی شدن بافر باش که در حال پر شدن است (جهت افزایش سرعت)
-            if writer.transport.get_write_buffer_size() > 65536: 
+            
+            if writer.transport.get_write_buffer_size() > 524288: 
                 await writer.drain()
     except Exception: pass
     finally:
+        # ثبت باقیمانده‌ی ترافیک هنگام قطع اتصال
+        if local_bytes > 0:
+            await check_and_use(uid, local_bytes)
+            if conn_info: conn_info["bytes"] += local_bytes
         try: writer.write_eof()
         except: pass
 
 async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: str, uid: str):
     first = True
     conn_info = connections.get(conn_id)
+    local_bytes = 0  # شمارنده محلی دانلود
     try:
         while True:
             data = await reader.read(RELAY_BUF)
             if not data: break
-            if not await check_and_use(uid, len(data)):
-                await ws.close(code=1008); break
             
-            # Speed Limit
+            size = len(data)
+            local_bytes += size
+            
+            # آپدیت حجم کاربر به ازای هر 512 کیلوبایت (پرواز سرعت دانلود)
+            if local_bytes >= 524288:
+                if not await check_and_use(uid, local_bytes):
+                    await ws.close(code=1008); break
+                if conn_info: conn_info["bytes"] += local_bytes
+                local_bytes = 0
+            
             if link := LINKS.get(uid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uid, rate).consume(len(data))
+                if rate > 0: await _get_bucket(uid, rate).consume(size)
                 
-            if conn_info: conn_info["bytes"] += len(data)
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
+    finally:
+        # ثبت باقیمانده‌ی ترافیک دانلود هنگام قطع اتصال
+        if local_bytes > 0:
+            await check_and_use(uid, local_bytes)
+            if conn_info: conn_info["bytes"] += local_bytes
 
 @app.websocket("/ws/{uuid}")
+@app.websocket("/upgrade/{uuid}")
 async def websocket_tunnel(ws: WebSocket, uuid: str):
     await ws.accept()
     link = LINKS.get(uuid)
@@ -2811,8 +2839,9 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         log_activity("connection", f"اتصال {ip} (محدودیت IP)", "warn")
         await ws.close(code=1008); return
 
+    proto = "httpupgrade" if "upgrade" in ws.url.path else "vless-ws"
     conn_id = secrets.token_urlsafe(6)
-    connections[conn_id] = {"uuid": uuid, "ip": ip, "transport": "vless-ws", "connected_at": datetime.now().isoformat(), "bytes": 0}
+    connections[conn_id] = {"uuid": uuid, "ip": ip, "transport": proto, "connected_at": datetime.now().isoformat(), "bytes": 0}
     writer = None
 
     try:
@@ -2821,11 +2850,14 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         if not first_chunk: return
         
         command, address, port, payload = await parse_vless_header(first_chunk)
-        if not await check_and_use(uuid, len(first_chunk)):
-            await ws.close(code=1008); return
-
+        
+        # ثبت ترافیک پکتِ اولیه
+        await check_and_use(uuid, len(first_chunk))
         connections[conn_id]["bytes"] += len(first_chunk)
+        
         reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+        
+        _tune_socket(writer)
         
         if payload:
             writer.write(payload)
@@ -2843,7 +2875,6 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
             try: writer.close()
             except: pass
         connections.pop(conn_id, None)
-
 # ── XHTTP Core Tunnels (Ultra Optimized) ──────────────────────────────────────
 router = APIRouter()
 xhttp_sessions: dict = {}
@@ -2851,6 +2882,7 @@ xhttp_sessions: dict = {}
 async def _open_tcp_from_header(first_chunk: bytes):
     command, address, port, payload = await parse_vless_header(first_chunk)
     reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
+    _tune_socket(writer)
     if payload:
         writer.write(payload)
         await writer.drain()
@@ -2876,7 +2908,7 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     conn_info = connections.get(sess["conn_id"]) if sess else None
     try:
         while True:
-            data = await reader.read(256 * 1024)
+            data = await reader.read(RELAY_BUF) # استفاده از بافر 64KB
             if not data: break
             if not await check_and_use(uuid, len(data)): break
             
@@ -2898,7 +2930,8 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
-        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=512), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
+        # افزایش ظرفیت صف برای جلوگیری از Drop شدن پکت‌های ویدیو
+        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=1024), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
         xhttp_sessions[session_id] = sess
         return sess
 
@@ -2913,6 +2946,7 @@ def _downstream_gen(sess: dict):
     return gen()
 
 @router.get("/xhttp-siz10/{mode}/{uuid}/{session_id}")
+@router.get("/xhttp/reality/{uuid}/{session_id}")
 async def xhttp_downlink(uuid: str, session_id: str, request: Request, mode: str = "auto"):
     ip = client_ip(request)
     sess = await _get_or_create_xhttp(uuid, mode, session_id, ip)
@@ -2961,9 +2995,11 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
     return {"ok": True}
 
 @router.post("/xhttp-siz10/stream-up/{uuid}/{session_id}")
+@router.post("/xhttp/reality/{uuid}/{session_id}")
 async def stream_up_upload(uuid: str, session_id: str, request: Request):
+    mode = "reality" if "reality" in request.url.path else "stream-up"
     ip = client_ip(request)
-    sess = await _get_or_create_xhttp(uuid, "stream-up", session_id, ip)
+    sess = await _get_or_create_xhttp(uuid, mode, session_id, ip)
     if sess.get("closed"): raise HTTPException(status_code=404)
     
     conn_info = connections.get(sess["conn_id"])
@@ -2985,7 +3021,7 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > 65536:
+            if sess["writer"].transport.get_write_buffer_size() > 524288:
                 await sess["writer"].drain()
     except Exception:
         await _teardown_xhttp(session_id)
@@ -2993,7 +3029,6 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
     return {"ok": True}
 
 app.include_router(router)
-
 # ── GUI Routes ────────────────────────────────────────────────────────────────
 @app.get("/p/{uuid_key}", response_class=HTMLResponse)
 async def public_sub_page(uuid_key: str, request: Request):
@@ -3054,4 +3089,4 @@ async def dashboard(request: Request):
     return HTMLResponse(content=DASHBOARD_HTML)
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=CONFIG["port"], log_level="info", workers=1)
+    uvicorn.run("main:app", host="0.0.0.0", port=CONFIG["port"], log_level="info", workers=1, loop="uvloop")

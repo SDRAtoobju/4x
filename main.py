@@ -1,3 +1,5 @@
+
+
 import asyncio
 import base64
 import hashlib
@@ -2709,6 +2711,21 @@ async def throttle(uuid: str, nbytes: int):
 def reset_bucket(uuid: str): _buckets.pop(uuid, None)
 
 # ── WS / HTTPUpgrade Core Tunnels ─────────────────────────────────────────────
+# ── Speed & Traffic Optimizer ─────────────────────────────────────────────────
+current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
+
+async def update_time_loop():
+    """آپدیت زمان در پس‌زمینه (جلوگیری از محاسبه زمان به ازای هر کیلوبایت ترافیک)"""
+    global current_hour_str
+    while True:
+        current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
+        await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def start_time_loop():
+    asyncio.create_task(update_time_loop())
+
+# ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
 RELAY_BUF = 256 * 1024
 
 async def parse_vless_header(chunk: bytes):
@@ -2725,28 +2742,38 @@ async def parse_vless_header(chunk: bytes):
     return command, address, port, chunk[pos:]
 
 async def check_and_use(uid: str, n: int) -> bool:
-    async with LINKS_LOCK:
-        link = LINKS.get(uid)
-        if not link or not is_link_allowed(link): return False
-        link["used_bytes"] += n
-        stats["total_bytes"] += n
-        hourly_traffic[now_ir().strftime("%H:00")] += n
+    """بدون قفل (Lock-free) برای حداکثر سرعت throughput"""
+    link = LINKS.get(uid)
+    if not link or not is_link_allowed(link): return False
+    link["used_bytes"] += n
+    stats["total_bytes"] += n
+    hourly_traffic[current_hour_str] += n
     return True
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):
+    conn_info = connections.get(conn_id)
     try:
         while True:
             msg = await ws.receive()
             if msg["type"] == "websocket.disconnect": break
             data = msg.get("bytes") or (msg.get("text") or "").encode()
             if not data: continue
+            
             if not await check_and_use(uid, len(data)):
                 await ws.close(code=1008); break
-            await throttle(uid, len(data))
+            
+            # Speed Limit
+            if link := LINKS.get(uid):
+                rate = link.get("speed_limit_bytes", 0)
+                if rate > 0: await _get_bucket(uid, rate).consume(len(data))
+                
             stats["total_requests"] += 1
-            connections[conn_id]["bytes"] += len(data)
+            if conn_info: conn_info["bytes"] += len(data)
+            
             writer.write(data)
-            if writer.transport.get_write_buffer_size() > RELAY_BUF: await writer.drain()
+            # فقط زمانی منتظر خالی شدن بافر باش که در حال پر شدن است (جهت افزایش سرعت)
+            if writer.transport.get_write_buffer_size() > 65536: 
+                await writer.drain()
     except Exception: pass
     finally:
         try: writer.write_eof()
@@ -2754,24 +2781,28 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
 
 async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: str, uid: str):
     first = True
+    conn_info = connections.get(conn_id)
     try:
         while True:
             data = await reader.read(RELAY_BUF)
             if not data: break
             if not await check_and_use(uid, len(data)):
                 await ws.close(code=1008); break
-            await throttle(uid, len(data))
-            connections[conn_id]["bytes"] += len(data)
+            
+            # Speed Limit
+            if link := LINKS.get(uid):
+                rate = link.get("speed_limit_bytes", 0)
+                if rate > 0: await _get_bucket(uid, rate).consume(len(data))
+                
+            if conn_info: conn_info["bytes"] += len(data)
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
 
-# پشتیبانی از VLESS-WS و HTTPUpgrade (ساختار اصلی جفتشان WebSocket استاندارد در فست‌ای‌پی‌آی است)
 @app.websocket("/ws/{uuid}")
-@app.websocket("/upgrade/{uuid}")
 async def websocket_tunnel(ws: WebSocket, uuid: str):
     await ws.accept()
-    async with LINKS_LOCK: link = LINKS.get(uuid)
+    link = LINKS.get(uuid)
     if not is_link_allowed(link):
         await ws.close(code=1008); return
 
@@ -2780,9 +2811,8 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         log_activity("connection", f"اتصال {ip} (محدودیت IP)", "warn")
         await ws.close(code=1008); return
 
-    proto = "httpupgrade" if "upgrade" in ws.url.path else "vless-ws"
     conn_id = secrets.token_urlsafe(6)
-    connections[conn_id] = {"uuid": uuid, "ip": ip, "transport": proto, "connected_at": datetime.now().isoformat(), "bytes": 0}
+    connections[conn_id] = {"uuid": uuid, "ip": ip, "transport": "vless-ws", "connected_at": datetime.now().isoformat(), "bytes": 0}
     writer = None
 
     try:
@@ -2814,7 +2844,7 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
             except: pass
         connections.pop(conn_id, None)
 
-# ── XHTTP / Reality Core Tunnels ──────────────────────────────────────────────
+# ── XHTTP Core Tunnels (Ultra Optimized) ──────────────────────────────────────
 router = APIRouter()
 xhttp_sessions: dict = {}
 
@@ -2842,14 +2872,19 @@ async def _teardown_xhttp(session_id: str):
 
 async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamReader, down_q: asyncio.Queue):
     first = True
+    sess = xhttp_sessions.get(session_id)
+    conn_info = connections.get(sess["conn_id"]) if sess else None
     try:
         while True:
             data = await reader.read(256 * 1024)
             if not data: break
             if not await check_and_use(uuid, len(data)): break
-            await throttle(uuid, len(data))
-            async with XHTTP_LOCK: sess = xhttp_sessions.get(session_id)
-            if sess and sess["conn_id"] in connections: connections[sess["conn_id"]]["bytes"] += len(data)
+            
+            if link := LINKS.get(uuid):
+                rate = link.get("speed_limit_bytes", 0)
+                if rate > 0: await _get_bucket(uuid, rate).consume(len(data))
+                
+            if conn_info: conn_info["bytes"] += len(data)
             await down_q.put((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
@@ -2859,7 +2894,7 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
 async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -> dict:
     async with XHTTP_LOCK:
         if session_id in xhttp_sessions: return xhttp_sessions[session_id]
-        async with LINKS_LOCK: link = LINKS.get(uuid)
+        link = LINKS.get(uuid)
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
@@ -2878,9 +2913,7 @@ def _downstream_gen(sess: dict):
     return gen()
 
 @router.get("/xhttp-siz10/{mode}/{uuid}/{session_id}")
-@router.get("/xhttp/reality/{uuid}/{session_id}")
 async def xhttp_downlink(uuid: str, session_id: str, request: Request, mode: str = "auto"):
-    # مد reality هم اینجا پوشش داده می‌شود (اگر وصل شود)
     ip = client_ip(request)
     sess = await _get_or_create_xhttp(uuid, mode, session_id, ip)
     if sess.get("closed"): raise HTTPException(status_code=404)
@@ -2896,7 +2929,11 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
     if not await check_and_use(uuid, len(body)):
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=403)
-    await throttle(uuid, len(body))
+        
+    if link := LINKS.get(uuid):
+        rate = link.get("speed_limit_bytes", 0)
+        if rate > 0: await _get_bucket(uuid, rate).consume(len(body))
+        
     connections[sess["conn_id"]]["bytes"] += len(body)
 
     try:
@@ -2924,19 +2961,22 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
     return {"ok": True}
 
 @router.post("/xhttp-siz10/stream-up/{uuid}/{session_id}")
-@router.post("/xhttp/reality/{uuid}/{session_id}")
 async def stream_up_upload(uuid: str, session_id: str, request: Request):
-    mode = "reality" if "reality" in request.url.path else "stream-up"
     ip = client_ip(request)
-    sess = await _get_or_create_xhttp(uuid, mode, session_id, ip)
+    sess = await _get_or_create_xhttp(uuid, "stream-up", session_id, ip)
     if sess.get("closed"): raise HTTPException(status_code=404)
     
+    conn_info = connections.get(sess["conn_id"])
     try:
         async for chunk in request.stream():
             if not chunk: continue
             if not await check_and_use(uuid, len(chunk)): raise HTTPException(status_code=403)
-            await throttle(uuid, len(chunk))
-            connections[sess["conn_id"]]["bytes"] += len(chunk)
+            
+            if link := LINKS.get(uuid):
+                rate = link.get("speed_limit_bytes", 0)
+                if rate > 0: await _get_bucket(uuid, rate).consume(len(chunk))
+                
+            if conn_info: conn_info["bytes"] += len(chunk)
 
             if sess["writer"] is None:
                 reader, writer = await _open_tcp_from_header(chunk)
@@ -2945,7 +2985,8 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 continue
             
             sess["writer"].write(chunk)
-            await sess["writer"].drain()
+            if sess["writer"].transport.get_write_buffer_size() > 65536:
+                await sess["writer"].drain()
     except Exception:
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=502)
@@ -2974,7 +3015,7 @@ async def public_sub_data(uuid_key: str, request: Request):
 
     host = get_host(request)
     link_ids = sub.get("link_ids", [])
-    async with LINKS_LOCK: snap = dict(LINKS)
+    snap = dict(LINKS)
 
     links_out = []
     active_conns = 0

@@ -2145,40 +2145,58 @@ async def put_cf_kv(key: str, value: str):
 
 # ── State Management (Smart Cluster Sync) ─────────────────────────────────────
 LAST_MODIFIED = "2000-01-01T00:00:00"
+LAST_TS = 0.0
 
-async def sync_with_cf():
-    global LAST_MODIFIED, AUTH, CONFIG
+async def sync_with_cf(skip_structure=False):
+    global LAST_MODIFIED, LAST_TS, AUTH, CONFIG, CF_SYNC_CONFIG
     raw = await get_cf_kv("luffy_x4g_state")
     if not raw: return
     
     try:
         remote = json.loads(raw)
-        remote_time = remote.get("saved_at", "2000-01-01T00:00:00")
+    except Exception as e:
+        logger.error(f"Sync parse error: {e}")
+        return
         
-        async with LINKS_LOCK:
-            for uid, r_link in remote.get("links", {}).items():
-                if uid in LINKS:
-                    LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
+    remote_ts = remote.get("saved_ts", 0.0)
+    remote_time = remote.get("saved_at", "2000-01-01T00:00:00")
+    
+    is_newer = False
+    if remote_ts > 0 and LAST_TS > 0:
+        is_newer = remote_ts > LAST_TS
+    else:
+        is_newer = remote_time > LAST_MODIFIED
+
+    async with LINKS_LOCK:
+        remote_links = remote.get("links", {})
+        
+        # 1. همیشه مصرف ترافیک را ترکیب کن (اولویت با عدد بزرگتر)
+        for uid, r_link in remote_links.items():
+            if uid in LINKS:
+                LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
+        
+        # 2. در صورتی که ساختار تغییر کرده و ادمین در حال ادیت نیست، اطلاعات جدید را بگیر
+        if is_newer and not skip_structure:
+            for uid in list(LINKS.keys()):
+                if uid not in remote_links: del LINKS[uid]
+            for uid, r_link in remote_links.items():
+                if uid not in LINKS: LINKS[uid] = r_link
+                else:
+                    for k, v in r_link.items():
+                        if k != "used_bytes": LINKS[uid][k] = v
+                        
+            async with SUBS_LOCK:
+                SUBS.clear()
+                SUBS.update(remote.get("subs", {}))
+                
+            if "password_hash" in remote: AUTH["password_hash"] = remote["password_hash"]
+            if "secret" in remote: CONFIG["secret"] = remote["secret"]
             
-            if remote_time > LAST_MODIFIED:
-                remote_links = remote.get("links", {})
-                for uid in list(LINKS.keys()):
-                    if uid not in remote_links: del LINKS[uid]
-                for uid, r_link in remote_links.items():
-                    if uid not in LINKS: LINKS[uid] = r_link
-                    else:
-                        for k, v in r_link.items():
-                            if k != "used_bytes": LINKS[uid][k] = v
-                async with SUBS_LOCK:
-                    SUBS.clear()
-                    SUBS.update(remote.get("subs", {}))
-                if "password_hash" in remote: AUTH["password_hash"] = remote["password_hash"]
-                if "secret" in remote: CONFIG["secret"] = remote["secret"]
-                LAST_MODIFIED = remote_time
-    except Exception as e: logger.error(f"Sync parse error: {e}")
+            LAST_TS = remote_ts
+            LAST_MODIFIED = remote_time
 
 async def load_state():
-    global LINKS, AUTH, SUBS, CONFIG, LAST_MODIFIED, CF_SYNC_CONFIG
+    global LINKS, AUTH, SUBS, CONFIG, LAST_MODIFIED, LAST_TS, CF_SYNC_CONFIG
     try:
         if DATA_FILE.exists():
             async with aiofiles.open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -2190,15 +2208,22 @@ async def load_state():
                 if "secret" in data: CONFIG["secret"] = data["secret"]
                 if "cf_sync" in data: CF_SYNC_CONFIG.update(data["cf_sync"])
                 LAST_MODIFIED = data.get("saved_at", "2000-01-01T00:00:00")
+                LAST_TS = data.get("saved_ts", 0.0)
         await sync_with_cf()
     except Exception as e: logger.warning(f"Could not load state: {e}")
 
-async def save_state():
-    global LAST_MODIFIED
+async def save_state(mutate=False):
+    global LAST_MODIFIED, LAST_TS
     async with SAVE_LOCK:
         try:
-            await sync_with_cf()
-            now_str = datetime.now().isoformat()
+            # اگر ادمین تغییری داده (mutate=True)، اجازه نده اطلاعات کلودفلر روی آن رونویسی شود
+            await sync_with_cf(skip_structure=mutate)
+            
+            now_ts = time.time()
+            import datetime as dt
+            now_str = dt.datetime.now(dt.timezone.utc).isoformat()
+            
+            LAST_TS = now_ts
             LAST_MODIFIED = now_str
             
             data = {
@@ -2207,6 +2232,7 @@ async def save_state():
                 "password_hash": AUTH["password_hash"],
                 "secret": CONFIG["secret"],
                 "cf_sync": CF_SYNC_CONFIG,
+                "saved_ts": now_ts,
                 "saved_at": now_str,
             }
             raw_data = json.dumps(data, ensure_ascii=False, indent=2)
@@ -2219,11 +2245,11 @@ async def save_state():
                 await f.write(raw_data)
             tmp.replace(DATA_FILE)
         except Exception as e: logger.warning(f"Save error: {e}")
-
+        
 async def periodic_save_state():
     while True:
-        await asyncio.sleep(60) 
-        await save_state()
+        await asyncio.sleep(15)  # همگام‌سازی فوق‌سریع هر ۱۵ ثانیه
+        await save_state(mutate=False)
 
 # ── In-memory state ───────────────────────────────────────────────────────────
 connections: dict = {}
@@ -2303,7 +2329,7 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    await save_state()
+    await save_state(mutate=True)
     if http_client:
         await http_client.aclose()
 
@@ -2500,7 +2526,7 @@ async def ensure_default_link():
                     "speed_limit_bytes": 0,
                     "address": "",
                 }
-                asyncio.create_task(save_state())
+                asyncio.create_task(save_state(mutate=True))
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
 @app.get("/test-cf")
@@ -2537,7 +2563,7 @@ async def update_cf_sync_settings(request: Request, _=Depends(require_auth)):
     if body.get("token"):
         CF_SYNC_CONFIG["token"] = body.get("token", "").strip()
     
-    await save_state()
+    await save_state(mutate=True)
     return {"ok": True}
 
 @app.get("/")
@@ -2580,7 +2606,7 @@ async def api_change_password(request: Request, token=Depends(require_auth)):
     async with SESSIONS_LOCK:
         SESSIONS.clear()
         SESSIONS[token] = time.time() + SESSION_TTL
-    await save_state()
+    await save_state(mutate=True)
     log_activity("auth", "رمز عبور پنل تغییر کرد", "ok")
     return {"ok": True}
 
@@ -2687,7 +2713,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
                 ids = SUBS[sub_id].setdefault("link_ids", [])
                 if uid not in ids: ids.append(uid)
                 
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
     
     host = get_host(request)
@@ -2755,7 +2781,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
             if new_sub and new_sub in SUBS:
                 if uid not in SUBS[new_sub].setdefault("link_ids", []): SUBS[new_sub]["link_ids"].append(uid)
 
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
 @app.delete("/api/links/{uid}")
@@ -2769,7 +2795,7 @@ async def delete_link(uid: str, _=Depends(require_auth)):
         async with SUBS_LOCK:
             if sub_id in SUBS and uid in SUBS[sub_id].get("link_ids", []):
                 SUBS[sub_id]["link_ids"].remove(uid)
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{label}» حذف شد", "err")
     return {"ok": True}
 
@@ -2784,7 +2810,7 @@ async def create_sub(request: Request, _=Depends(require_auth)):
     uuid_key = secrets.token_urlsafe(16)
     async with SUBS_LOCK:
         SUBS[sub_id] = {"name": name, "desc": desc, "password_hash": hash_password(password) if password else None, "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), "link_ids": []}
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» ساخته شد", "ok")
     host = get_host(request)
     return {"sub_id": sub_id, **SUBS[sub_id], "public_url": f"https://{host}/p/{uuid_key}", "sub_url": f"https://{host}/sub-group/{uuid_key}"}
@@ -2814,7 +2840,7 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
         if sub_id not in SUBS: raise HTTPException(status_code=404)
         s = SUBS[sub_id]
         if "link_ids" in body: s["link_ids"] = list(body["link_ids"])
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
 @app.delete("/api/subs/{sub_id}")
@@ -2826,7 +2852,7 @@ async def delete_sub(sub_id: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
         for link in LINKS.values():
             if link.get("sub_id") == sub_id: link["sub_id"] = None
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» حذف شد", "warn")
     return {"ok": True}
 

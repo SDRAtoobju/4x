@@ -2038,7 +2038,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 # ── Cloudflare KV Config (Smart & Foolproof) ──────────────────────────────────
 CF_ACCOUNT_ID = "492b13b02eb9e72ecdade7d86c215e5f"
 CF_NAMESPACE_ID = "254ca938ff0c4e1986a3167ea0379e6b"
-CF_API_TOKEN = "cfut_ucxb2M2yHln8mZnjJOfqEfXTfYvRW9o6sNJfRDjce13d9389"
+CF_API_TOKEN = "cfut_b0UQ8rIC5jQ9mnsPSIEvl0pFVieHcRor0NqJWsoi9a755922"
 
 async def get_cf_kv(key: str):
     if not http_client or not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10: return None

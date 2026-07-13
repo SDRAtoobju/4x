@@ -2035,35 +2035,39 @@ CONFIG = {
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # ── State Management ──────────────────────────────────────────────────────────
-# ── Cloudflare KV Config (Hardcoded) ──────────────────────────────────────────
+# ── Cloudflare KV Config (Smart & Foolproof) ──────────────────────────────────
 CF_ACCOUNT_ID = "492b13b02eb9e72ecdade7d86c215e5f"
 CF_NAMESPACE_ID = "254ca938ff0c4e1986a3167ea0379e6b"
 CF_API_TOKEN = "cfut_ucxb2M2yHln8mZnjJOfqEfXTfYvRW9o6sNJfRDjce13d9389"
 
 async def get_cf_kv(key: str):
-    if not (CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت" and http_client): return None
+    if not http_client or not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10: return None
     url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/{key}"
     try:
         resp = await http_client.get(url, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
         if resp.status_code == 200: return resp.text
-    except Exception: pass
+        elif resp.status_code != 404: logger.error(f"CF GET Error: {resp.status_code} - {resp.text}")
+    except Exception as e: logger.error(f"CF GET Exception: {e}")
     return None
 
 async def put_cf_kv(key: str, value: str):
-    if not (CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت" and http_client): return False
+    if not http_client or not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10: return False
     url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/{key}"
     try:
         resp = await http_client.put(url, content=value, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
-        return resp.status_code == 200
-    except Exception: return False
+        if resp.status_code == 200: return True
+        else:
+            logger.error(f"CF PUT Error: {resp.status_code} - {resp.text}")
+            return False
+    except Exception as e:
+        logger.error(f"CF PUT Exception: {e}")
+        return False
 
 # ── State Management (Smart Cluster Sync) ─────────────────────────────────────
 LAST_MODIFIED = "2000-01-01T00:00:00"
 
 async def sync_with_cf():
     global LAST_MODIFIED, AUTH, CONFIG
-    if not (CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت"): return
-    
     raw = await get_cf_kv("luffy_x4g_state")
     if not raw: return
     
@@ -2072,49 +2076,30 @@ async def sync_with_cf():
         remote_time = remote.get("saved_at", "2000-01-01T00:00:00")
         
         async with LINKS_LOCK:
-            # 1. برای جلوگیری از گم شدن ترافیک، همیشه بیشترین حجم مصرفی بین سرورها حفظ می‌شود
             for uid, r_link in remote.get("links", {}).items():
                 if uid in LINKS:
                     LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
             
-            # 2. اگر دیتای کلودفلر (توسط یک سرور دیگر) اخیراً آپدیت شده است، تغییرات را اعمال کن
             if remote_time > LAST_MODIFIED:
                 remote_links = remote.get("links", {})
-                
-                # حذف کانفیگ‌هایی که در سرور دیگر پاک شده‌اند
                 for uid in list(LINKS.keys()):
-                    if uid not in remote_links:
-                        del LINKS[uid]
-                        
-                # آپدیت یا اضافه کردن کانفیگ‌های جدید
+                    if uid not in remote_links: del LINKS[uid]
                 for uid, r_link in remote_links.items():
-                    if uid not in LINKS:
-                        LINKS[uid] = r_link
+                    if uid not in LINKS: LINKS[uid] = r_link
                     else:
                         for k, v in r_link.items():
-                            if k != "used_bytes":  # حجم را قبلا مقایسه کردیم
-                                LINKS[uid][k] = v
-
-                # همگام‌سازی گروه‌ها
+                            if k != "used_bytes": LINKS[uid][k] = v
                 async with SUBS_LOCK:
                     SUBS.clear()
                     SUBS.update(remote.get("subs", {}))
-                
-                # اعمال رمز عبور جدید اگر تغییر کرده باشد
-                if "password_hash" in remote:
-                    AUTH["password_hash"] = remote["password_hash"]
-                if "secret" in remote:
-                    CONFIG["secret"] = remote["secret"]
-                    
+                if "password_hash" in remote: AUTH["password_hash"] = remote["password_hash"]
+                if "secret" in remote: CONFIG["secret"] = remote["secret"]
                 LAST_MODIFIED = remote_time
-                logger.info("✅ اطلاعات از کلودفلر با موفقیت دریافت و همگام‌سازی شد.")
-    except Exception as e:
-        logger.error(f"Sync parse error: {e}")
+    except Exception as e: logger.error(f"Sync parse error: {e}")
 
 async def load_state():
     global LINKS, AUTH, SUBS, CONFIG, LAST_MODIFIED
     try:
-        # اول دیتای لوکال را میخوانیم (محض احتیاط)
         if DATA_FILE.exists():
             async with aiofiles.open(DATA_FILE, "r", encoding="utf-8") as f:
                 raw = await f.read()
@@ -2124,20 +2109,14 @@ async def load_state():
                 if "password_hash" in data: AUTH["password_hash"] = data["password_hash"]
                 if "secret" in data: CONFIG["secret"] = data["secret"]
                 LAST_MODIFIED = data.get("saved_at", "2000-01-01T00:00:00")
-        
-        # سپس با کلودفلر به روز رسانی می‌کنیم
         await sync_with_cf()
-    except Exception as e:
-        logger.warning(f"Could not load state: {e}")
+    except Exception as e: logger.warning(f"Could not load state: {e}")
 
 async def save_state():
     global LAST_MODIFIED
     async with SAVE_LOCK:
         try:
-            # قبل از هر بار ذخیره، چک می‌کنیم که سرورهای دیگر چیزی اضافه نکرده باشند
             await sync_with_cf()
-            
-            # تولید زمان جدید برای این آپدیت
             now_str = datetime.now().isoformat()
             LAST_MODIFIED = now_str
             
@@ -2150,23 +2129,18 @@ async def save_state():
             }
             raw_data = json.dumps(data, ensure_ascii=False, indent=2)
 
-            # آپلود دیتای نهایی در کلودفلر
-            if CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت":
-                await put_cf_kv("luffy_x4g_state", raw_data)
+            await put_cf_kv("luffy_x4g_state", raw_data)
 
-            # بکاپ لوکال
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             tmp = DATA_FILE.with_suffix(".tmp")
             async with aiofiles.open(tmp, "w", encoding="utf-8") as f:
                 await f.write(raw_data)
             tmp.replace(DATA_FILE)
-        except Exception as e:
-            logger.warning(f"Save error: {e}")
+        except Exception as e: logger.warning(f"Save error: {e}")
 
 async def periodic_save_state():
     while True:
         await asyncio.sleep(60) 
-        # هر ۱ دقیقه، این تابع اتوماتیک اجرا شده و ضمن آپلود ترافیک، اگر سرورهای دیگر تغییری داده باشند آن را اعمال می‌کند
         await save_state()
 
 # ── In-memory state ───────────────────────────────────────────────────────────
@@ -2447,6 +2421,25 @@ async def ensure_default_link():
                 asyncio.create_task(save_state())
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
+@app.get("/test-cf")
+async def test_cloudflare():
+    if not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10:
+        return {"error": "اطلاعات کلودفلر در کد وارد نشده است."}
+    
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/connection_test"
+    
+    # 1. تست نوشتن (Upload)
+    put_resp = await http_client.put(url, content="ok", headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    if put_resp.status_code != 200:
+        return {"step": "تست ذخیره (PUT) شکست خورد", "status_code": put_resp.status_code, "error_message": put_resp.text}
+        
+    # 2. تست خواندن (Download)
+    get_resp = await http_client.get(url, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    if get_resp.status_code != 200:
+        return {"step": "تست خواندن (GET) شکست خورد", "status_code": get_resp.status_code, "error_message": get_resp.text}
+        
+    return {"success": True, "message": "ارتباط با کلودفلر کاملا سالم است و دیتابیس به درستی کار می‌کند!"}
+
 @app.get("/")
 async def root():
     return {"service": "Luffy X4G", "version": "9.5", "status": "active"}

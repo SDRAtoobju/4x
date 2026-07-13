@@ -1138,6 +1138,39 @@ a{color:inherit;text-decoration:none}
         <button class="pw-submit" onclick="changePw()"><i class="ti ti-shield-check"></i> ذخیره رمز جدید</button>
       </div>
     </div>
+
+    <div class="pw-panel" style="margin-top:16px; grid-column: 1 / -1;">
+      <div class="pw-hero" style="background: linear-gradient(135deg, rgba(74,222,128,0.1), transparent);">
+        <div class="pw-hero-icon" style="background: linear-gradient(135deg, var(--green), #0D9668);"><i class="ti ti-cloud-upload"></i></div>
+        <div class="pw-hero-text">
+          <div class="pw-hero-title">تنظیمات همگام‌سازی ابری (Cloudflare)</div>
+          <div class="pw-hero-sub">بدون قرار دادن رمز در کد، سرورها را به هم متصل کنید</div>
+        </div>
+      </div>
+      <div class="pw-body">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="fg" style="flex:1">
+            <label>آدرس ورکر واسط (Worker URL)</label>
+            <input class="pw-input" id="cf-worker-url" placeholder="https://luffy-kv-proxy.yourname.workers.dev">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="fg" style="flex:1">
+            <label>توکن امنیتی (Secret Auth Token)</label>
+            <input class="pw-input" type="password" id="cf-worker-token" placeholder="در صورت عدم تغییر، خالی بگذارید">
+          </div>
+        </div>
+        <div class="cl" style="margin-top:0; margin-bottom:16px;">
+          <i class="ti ti-info-circle"></i>
+          <span>اطلاعات اتصال فقط روی این سرور ذخیره می‌شود و به هیچ وجه در گیت‌هاب پابلیک نمی‌شود.</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="pw-submit" style="background:var(--green);color:#000;flex:1" onclick="saveCfSync()"><i class="ti ti-check"></i> ذخیره در سرور</button>
+          <button class="pw-submit" style="background:var(--accent-d);color:var(--accent);flex:1;box-shadow:none" onclick="testCfSync()"><i class="ti ti-wifi"></i> تست اتصال</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 </main>
@@ -1656,11 +1689,51 @@ function wsLog(c,m){const l=document.getElementById('ws-log'),p=document.createE
 function wsConn(){const u=document.getElementById('ws-uuid').value.trim();if(!u){toast('UUID را وارد کنید','err');return}const url=(location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/'+u;wsLog('info','اتصال: '+url);ws=new WebSocket(url);ws.onopen=()=>wsLog('ok','✓ متصل - UUID معتبر');ws.onerror=()=>wsLog('err','✗ خطا - UUID نامعتبر یا غیرفعال');ws.onmessage=m=>wsLog('info','دریافت '+(m.data.size||m.data.length)+' byte');ws.onclose=e=>wsLog('err','قطع ('+e.code+')'+(e.code===1008?' - دسترسی رد شد':''))}
 function wsSend(){const m=document.getElementById('ws-msg').value;if(!m||!ws||ws.readyState!==1)return;ws.send(m);wsLog('sent','ارسال: '+m);document.getElementById('ws-msg').value=''}
 function wsDisc(){if(ws)ws.close()}
+
+async function loadCfSyncSettings() {
+  try {
+    const r = await authF('/api/settings/cf-sync');
+    const d = await r.json();
+    document.getElementById('cf-worker-url').value = d.worker_url || '';
+    if (d.has_token) {
+      document.getElementById('cf-worker-token').placeholder = '•••••••••••• (ذخیره شده در سرور)';
+    }
+  } catch(e) {}
+}
+
+async function saveCfSync() {
+  const url = document.getElementById('cf-worker-url').value.trim();
+  const token = document.getElementById('cf-worker-token').value.trim();
+  try {
+    const r = await authF('/api/settings/cf-sync', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ worker_url: url, token: token })
+    });
+    if (!r.ok) throw new Error();
+    toast('تنظیمات ابری ذخیره شد ✓', 'ok');
+    document.getElementById('cf-worker-token').value = '';
+    loadCfSyncSettings();
+  } catch(e) {
+    toast('خطا در ذخیره', 'err');
+  }
+}
+
+async function testCfSync() {
+  toast('در حال تست ارتباط...', 'info');
+  try {
+    const r = await authF('/test-cf');
+    const d = await r.json();
+    if(d.success) toast(d.message, 'ok');
+    else toast(d.error || 'ارتباط با ورکر برقرار نشد', 'err');
+  } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
+}
+
 document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
   document.getElementById('sub-all-url')&&(document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all');
-  fetchStats();fetchDefaultVless();loadLinks();loadSubs();
+  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();
   setInterval(fetchStats,4000);
   setInterval(()=>{
     if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
@@ -2035,32 +2108,39 @@ CONFIG = {
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # ── State Management ──────────────────────────────────────────────────────────
-# ── Cloudflare KV Config (Smart & Foolproof) ──────────────────────────────────
-CF_ACCOUNT_ID = "492b13b02eb9e72ecdade7d86c215e5f"
-CF_NAMESPACE_ID = "254ca938ff0c4e1986a3167ea0379e6b"
-CF_API_TOKEN = "cfut_b0UQ8rIC5jQ9mnsPSIEvl0pFVieHcRor0NqJWsoi9a755922"
+# ── Cloudflare KV Config (Smart & Dynamic) ──────────────────────────────────
+CF_SYNC_CONFIG = {
+    "worker_url": "",
+    "token": ""
+}
 
 async def get_cf_kv(key: str):
-    if not http_client or not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10: return None
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/{key}"
+    url = CF_SYNC_CONFIG["worker_url"]
+    token = CF_SYNC_CONFIG["token"]
+    if not http_client or not url or not token: return None
+    
+    endpoint = f"{url.rstrip('/')}/{key}"
     try:
-        resp = await http_client.get(url, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+        resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
         if resp.status_code == 200: return resp.text
-        elif resp.status_code != 404: logger.error(f"CF GET Error: {resp.status_code} - {resp.text}")
-    except Exception as e: logger.error(f"CF GET Exception: {e}")
+        elif resp.status_code != 404: logger.error(f"Worker GET Error: {resp.status_code}")
+    except Exception as e: logger.error(f"Worker GET Exception: {e}")
     return None
 
 async def put_cf_kv(key: str, value: str):
-    if not http_client or not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10: return False
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/{key}"
+    url = CF_SYNC_CONFIG["worker_url"]
+    token = CF_SYNC_CONFIG["token"]
+    if not http_client or not url or not token: return False
+    
+    endpoint = f"{url.rstrip('/')}/{key}"
     try:
-        resp = await http_client.put(url, content=value, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+        resp = await http_client.put(endpoint, content=value, headers={"X-Custom-Auth": token})
         if resp.status_code == 200: return True
         else:
-            logger.error(f"CF PUT Error: {resp.status_code} - {resp.text}")
+            logger.error(f"Worker PUT Error: {resp.status_code}")
             return False
     except Exception as e:
-        logger.error(f"CF PUT Exception: {e}")
+        logger.error(f"Worker PUT Exception: {e}")
         return False
 
 # ── State Management (Smart Cluster Sync) ─────────────────────────────────────
@@ -2098,7 +2178,7 @@ async def sync_with_cf():
     except Exception as e: logger.error(f"Sync parse error: {e}")
 
 async def load_state():
-    global LINKS, AUTH, SUBS, CONFIG, LAST_MODIFIED
+    global LINKS, AUTH, SUBS, CONFIG, LAST_MODIFIED, CF_SYNC_CONFIG
     try:
         if DATA_FILE.exists():
             async with aiofiles.open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -2108,6 +2188,7 @@ async def load_state():
                 SUBS.update(data.get("subs", {}))
                 if "password_hash" in data: AUTH["password_hash"] = data["password_hash"]
                 if "secret" in data: CONFIG["secret"] = data["secret"]
+                if "cf_sync" in data: CF_SYNC_CONFIG.update(data["cf_sync"])
                 LAST_MODIFIED = data.get("saved_at", "2000-01-01T00:00:00")
         await sync_with_cf()
     except Exception as e: logger.warning(f"Could not load state: {e}")
@@ -2125,6 +2206,7 @@ async def save_state():
                 "subs": dict(SUBS),
                 "password_hash": AUTH["password_hash"],
                 "secret": CONFIG["secret"],
+                "cf_sync": CF_SYNC_CONFIG,
                 "saved_at": now_str,
             }
             raw_data = json.dumps(data, ensure_ascii=False, indent=2)
@@ -2423,22 +2505,40 @@ async def ensure_default_link():
 # ── API Endpoints ─────────────────────────────────────────────────────────────
 @app.get("/test-cf")
 async def test_cloudflare():
-    if not CF_ACCOUNT_ID or len(CF_ACCOUNT_ID) < 10:
-        return {"error": "اطلاعات کلودفلر در کد وارد نشده است."}
+    url = CF_SYNC_CONFIG.get("worker_url", "")
+    token = CF_SYNC_CONFIG.get("token", "")
     
-    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/connection_test"
+    if not url or not token:
+        return {"error": "آدرس ورکر یا توکن در تنظیمات پنل وارد نشده است."}
     
-    # 1. تست نوشتن (Upload)
-    put_resp = await http_client.put(url, content="ok", headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    endpoint = f"{url.rstrip('/')}/connection_test"
+    
+    put_resp = await http_client.put(endpoint, content="ok", headers={"X-Custom-Auth": token})
     if put_resp.status_code != 200:
-        return {"step": "تست ذخیره (PUT) شکست خورد", "status_code": put_resp.status_code, "error_message": put_resp.text}
+        return {"step": "تست ذخیره (PUT)", "status_code": put_resp.status_code}
         
-    # 2. تست خواندن (Download)
-    get_resp = await http_client.get(url, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+    get_resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
     if get_resp.status_code != 200:
-        return {"step": "تست خواندن (GET) شکست خورد", "status_code": get_resp.status_code, "error_message": get_resp.text}
+        return {"step": "تست خواندن (GET)", "status_code": get_resp.status_code}
         
-    return {"success": True, "message": "ارتباط با کلودفلر کاملا سالم است و دیتابیس به درستی کار می‌کند!"}
+    return {"success": True, "message": "ارتباط با ورکر کلودفلر موفقیت‌آمیز است!"}
+
+@app.get("/api/settings/cf-sync")
+async def get_cf_sync_settings(_=Depends(require_auth)):
+    return {
+        "worker_url": CF_SYNC_CONFIG.get("worker_url", ""),
+        "has_token": bool(CF_SYNC_CONFIG.get("token", ""))
+    }
+
+@app.post("/api/settings/cf-sync")
+async def update_cf_sync_settings(request: Request, _=Depends(require_auth)):
+    body = await request.json()
+    CF_SYNC_CONFIG["worker_url"] = body.get("worker_url", "").strip()
+    if body.get("token"):
+        CF_SYNC_CONFIG["token"] = body.get("token", "").strip()
+    
+    await save_state()
+    return {"ok": True}
 
 @app.get("/")
 async def root():

@@ -44,7 +44,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ورود · Luffy Panel</title>
+<title>ورود · Sadra Panel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -88,7 +88,7 @@ input:focus+.ic{color:var(--accent)}
   <div class="card">
     <div class="brand">
       <div class="brand-img">__LOGO_SVG__</div>
-      <div><div class="brand-name">LUFFY PANEL</div><div class="brand-sub">Powered by X4G v9.5</div></div>
+      <div><div class="brand-name">Sadra PANEL</div><div class="brand-sub">Powered by X4G v9.5</div></div>
     </div>
     <h1>ورود به پنل</h1>
     <p class="sub">رمز عبور را برای دسترسی به داشبورد وارد کنید</p>
@@ -1816,14 +1816,14 @@ html,body{min-height:100%;background:var(--bg);font-family:var(--serif);color:va
   <div class="top">
     <div class="brand">
       <div class="brand-img">__LOGO_SVG__</div>
-      <div><div class="brand-name">LUFFY PANEL</div><div class="brand-sub">Sub Group</div></div>
+      <div><div class="brand-name">Sadra PANEL</div><div class="brand-sub">Sub Group</div></div>
     </div>
     <div class="top-actions">
       <button class="icon-btn" id="theme-toggle" onclick="toggleTheme()"><i class="ti ti-sun" id="theme-icon"></i></button>
     </div>
   </div>
   <div id="root"><div class="empty-state">در حال بارگذاری...</div></div>
-  <div class="footer">X4G v9.5 Luffy Engine</div>
+  <div class="footer">X4G v9.5 Sadra Engine</div>
 </div>
 <script>
 const UUID_KEY='__UUID_KEY__';
@@ -2724,7 +2724,6 @@ async def throttle(uuid: str, nbytes: int):
 
 def reset_bucket(uuid: str): _buckets.pop(uuid, None)
 
-# ── WS / HTTPUpgrade Core Tunnels ─────────────────────────────────────────────
 # ── Speed & Traffic Optimizer ─────────────────────────────────────────────────
 current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
 
@@ -2740,14 +2739,19 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
-RELAY_BUF = 65536  # کاهش به 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
+RELAY_BUF = 262144  # ارتقاء به 256KB برای بالاترین توان عملیاتی
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """تنظیمات سوکت برای کاهش پینگ و جلوگیری از تاخیر بسته‌ها (TCP_NODELAY)"""
+    """تنظیمات حرفه‌ای سوکت برای به حداقل رساندن بافر‌بلوت و حداکثر سرعت"""
     try:
         sock = writer.transport.get_extra_info("socket")
         if sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            # باز کردن بافر دریافت و ارسال تا ۴ مگابایت برای استریم‌های سنگین
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4194304)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4194304)
+            if hasattr(socket, "TCP_QUICKACK"):
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_QUICKACK, 1)
     except Exception:
         pass
 
@@ -2785,8 +2789,8 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            # ثبت ترافیک هر 256KB برای واکنش‌گرایی سریع‌تر (بدون فشار به CPU)
-            if local_bytes >= 262144: 
+            # ذخیره ترافیک هر ۱ مگابایت برای جلوگیری از استفاده بی‌مورد پردازنده
+            if local_bytes >= 1048576: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -2799,8 +2803,8 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            # درین کردنِ زودهنگام روی 64KB تا جریان آپلود پیوسته (Smooth) بماند
-            if writer.transport.get_write_buffer_size() > 65536: 
+            # اجازه به بافر شدن دیتای خروجی تا ۱ مگابایت برای پهنای باند بی‌نقص
+            if writer.transport.get_write_buffer_size() > 1048576: 
                 await writer.drain()
     except Exception: pass
     finally:
@@ -2816,13 +2820,13 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
     local_bytes = 0
     try:
         while True:
-            data = await reader.read(65536) # خواندن نرم و پیوسته
+            data = await reader.read(RELAY_BUF)
             if not data: break
             
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= 262144: 
+            if local_bytes >= 1048576: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -2834,10 +2838,6 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
                 
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
-            
-            # خط جادویی: اجازه می‌دهد رویدادهای زنده نگه‌داشتنِ WebSocket (مثل PING/PONG)
-            # نفس بکشند و از گیر کردنِ ویدیوهای یوتیوب (Bufferbloat) کاملاً جلوگیری شود.
-            await asyncio.sleep(0)
             
     except Exception: pass
     finally:
@@ -2870,7 +2870,6 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         
         command, address, port, payload = await parse_vless_header(first_chunk)
         
-        # ثبت ترافیک پکتِ اولیه
         await check_and_use(uuid, len(first_chunk))
         connections[conn_id]["bytes"] += len(first_chunk)
         
@@ -2894,6 +2893,7 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
             try: writer.close()
             except: pass
         connections.pop(conn_id, None)
+
 # ── XHTTP Core Tunnels (Ultra Optimized) ──────────────────────────────────────
 router = APIRouter()
 xhttp_sessions: dict = {}
@@ -2925,21 +2925,30 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     first = True
     sess = xhttp_sessions.get(session_id)
     conn_info = connections.get(sess["conn_id"]) if sess else None
+    local_bytes = 0
     try:
         while True:
-            data = await reader.read(RELAY_BUF) # استفاده از بافر 64KB
+            data = await reader.read(RELAY_BUF)
             if not data: break
-            if not await check_and_use(uuid, len(data)): break
+            
+            size = len(data)
+            local_bytes += size
+            if local_bytes >= 1048576:
+                if not await check_and_use(uuid, local_bytes): break
+                if conn_info: conn_info["bytes"] += local_bytes
+                local_bytes = 0
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(len(data))
+                if rate > 0: await _get_bucket(uuid, rate).consume(size)
                 
-            if conn_info: conn_info["bytes"] += len(data)
             await down_q.put((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
     finally:
+        if local_bytes > 0:
+            await check_and_use(uuid, local_bytes)
+            if conn_info: conn_info["bytes"] += local_bytes
         await _teardown_xhttp(session_id)
 
 async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -> dict:
@@ -2949,8 +2958,8 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
-        # افزایش ظرفیت صف برای جلوگیری از Drop شدن پکت‌های ویدیو
-        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=1024), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
+        # افزایش ظرفیت صف به 4096 برای جلوگیری از پریدن فریم‌ها در ویدیو 4K/8K
+        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=4096), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
         xhttp_sessions[session_id] = sess
         return sess
 
@@ -3022,16 +3031,21 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
     if sess.get("closed"): raise HTTPException(status_code=404)
     
     conn_info = connections.get(sess["conn_id"])
+    local_bytes = 0
     try:
         async for chunk in request.stream():
             if not chunk: continue
-            if not await check_and_use(uuid, len(chunk)): raise HTTPException(status_code=403)
+            size = len(chunk)
+            local_bytes += size
+            
+            if local_bytes >= 1048576:
+                if not await check_and_use(uuid, local_bytes): raise HTTPException(status_code=403)
+                if conn_info: conn_info["bytes"] += local_bytes
+                local_bytes = 0
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(len(chunk))
-                
-            if conn_info: conn_info["bytes"] += len(chunk)
+                if rate > 0: await _get_bucket(uuid, rate).consume(size)
 
             if sess["writer"] is None:
                 reader, writer = await _open_tcp_from_header(chunk)
@@ -3040,14 +3054,19 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > 524288:
+            if sess["writer"].transport.get_write_buffer_size() > 2097152:
                 await sess["writer"].drain()
     except Exception:
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=502)
+    finally:
+        if local_bytes > 0:
+            await check_and_use(uuid, local_bytes)
+            if conn_info: conn_info["bytes"] += local_bytes
     return {"ok": True}
 
 app.include_router(router)
+
 # ── GUI Routes ────────────────────────────────────────────────────────────────
 @app.get("/p/{uuid_key}", response_class=HTMLResponse)
 async def public_sub_page(uuid_key: str, request: Request):

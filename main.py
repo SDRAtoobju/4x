@@ -2035,47 +2035,98 @@ CONFIG = {
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # ── State Management ──────────────────────────────────────────────────────────
-async def load_state():
-    global LINKS, AUTH, SUBS
+# ── Cloudflare KV Config (Hardcoded) ──────────────────────────────────────────
+# مقادیر زیر را با اطلاعات اکانت کلودفلر خود پر کنید:
+CF_ACCOUNT_ID = "492b13b02eb9e72ecdade7d86c215e5f"
+CF_NAMESPACE_ID = "254ca938ff0c4e1986a3167ea0379e6b"
+CF_API_TOKEN = "cfut_ucxb2M2yHln8mZnjJOfqEfXTfYvRW9o6sNJfRDjce13d9389"
+
+async def get_cf_kv(key: str):
+    if not (CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت_شما_در_کلودفلر" and http_client): return None
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/{key}"
     try:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        if DATA_FILE.exists():
+        resp = await http_client.get(url, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+        if resp.status_code == 200: return resp.text
+    except Exception: pass
+    return None
+
+async def put_cf_kv(key: str, value: str):
+    if not (CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت_شما_در_کلودفلر" and http_client): return False
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/storage/kv/namespaces/{CF_NAMESPACE_ID}/values/{key}"
+    try:
+        resp = await http_client.put(url, content=value, headers={"Authorization": f"Bearer {CF_API_TOKEN}"})
+        return resp.status_code == 200
+    except Exception: return False
+
+# ── State Management (Smart Cluster Sync) ─────────────────────────────────────
+async def load_state():
+    global LINKS, AUTH, SUBS, CONFIG
+    try:
+        raw = await get_cf_kv("luffy_x4g_state")
+        if raw is None and DATA_FILE.exists():
             async with aiofiles.open(DATA_FILE, "r", encoding="utf-8") as f:
                 raw = await f.read()
+        if raw:
             data = json.loads(raw)
             LINKS.update(data.get("links", {}))
             SUBS.update(data.get("subs", {}))
-            if "password_hash" in data:
-                AUTH["password_hash"] = data["password_hash"]
-            logger.info(f"State loaded: {len(LINKS)} links, {len(SUBS)} subs")
+            if "password_hash" in data: AUTH["password_hash"] = data["password_hash"]
+            if "secret" in data and not os.environ.get("SECRET_KEY"): CONFIG["secret"] = data["secret"]
     except Exception as e:
         logger.warning(f"Could not load state: {e}")
 
 async def save_state():
+    # این تابع به شکلی نوشته شده که قبل از ذخیره، دیتای سرورهای دیگر را هم دریافت و ادغام می‌کند 
+    # تا ترافیک یا کانفیگی که مثلاً در Railway اضافه کردید، توسط Render پاک نشود.
     async with SAVE_LOCK:
         try:
-            DATA_DIR.mkdir(parents=True, exist_ok=True)
+            if CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت_شما_در_کلودفلر":
+                raw = await get_cf_kv("luffy_x4g_state")
+                if raw:
+                    remote = json.loads(raw)
+                    # ادغام هوشمند کانفیگ‌ها و حجم مصرفی
+                    for uid, r_link in remote.get("links", {}).items():
+                        if uid not in LINKS:
+                            LINKS[uid] = r_link
+                        else:
+                            LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
+                            if "active" in r_link: LINKS[uid]["active"] = r_link["active"]
+                            if "sub_id" in r_link: LINKS[uid]["sub_id"] = r_link["sub_id"]
+                    # ادغام هوشمند گروه‌ها
+                    for sid, r_sub in remote.get("subs", {}).items():
+                        if sid not in SUBS:
+                            SUBS[sid] = r_sub
+                        else:
+                            if "link_ids" in r_sub: SUBS[sid]["link_ids"] = r_sub["link_ids"]
+
             data = {
                 "links": dict(LINKS),
                 "subs": dict(SUBS),
                 "password_hash": AUTH["password_hash"],
+                "secret": CONFIG["secret"],
                 "saved_at": datetime.now().isoformat(),
             }
+            raw_data = json.dumps(data, ensure_ascii=False, indent=2)
+
+            if CF_ACCOUNT_ID and CF_ACCOUNT_ID != "آیدی_اکانت_شما_در_کلودفلر":
+                await put_cf_kv("luffy_x4g_state", raw_data)
+
+            DATA_DIR.mkdir(parents=True, exist_ok=True)
             tmp = DATA_FILE.with_suffix(".tmp")
             async with aiofiles.open(tmp, "w", encoding="utf-8") as f:
-                await f.write(json.dumps(data, ensure_ascii=False, indent=2))
+                await f.write(raw_data)
             tmp.replace(DATA_FILE)
         except Exception as e:
-            logger.warning(f"Could not save state: {e}")
+            logger.warning(f"Sync error: {e}")
+
+async def periodic_save_state():
+    while True:
+        await asyncio.sleep(60) # هر یک دقیقه با بقیه سرورها سینک می‌شود
+        await save_state()
 
 # ── In-memory state ───────────────────────────────────────────────────────────
 connections: dict = {}
-stats = {
-    "total_bytes": 0,
-    "total_requests": 0,
-    "total_errors": 0,
-    "start_time": time.time(),
-}
+stats = {"total_bytes": 0, "total_requests": 0, "total_errors": 0, "start_time": time.time()}
 error_logs: deque = deque(maxlen=50)
 activity_logs: deque = deque(maxlen=200)
 hourly_traffic: dict = defaultdict(int)
@@ -2087,31 +2138,17 @@ SUBS_LOCK = asyncio.Lock()
 XHTTP_LOCK = asyncio.Lock()
 SESSIONS_LOCK = asyncio.Lock()
 
-# اضافه شدن پروتکل‌های جدید
 PROTOCOLS = ("vless-ws", "xhttp-packet-up", "xhttp-stream-up", "httpupgrade", "xhttp-reality")
 DEFAULT_PROTOCOL = "vless-ws"
-
 FINGERPRINTS = ("chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized")
 DEFAULT_FINGERPRINT = "chrome"
-
-DEFAULT_ALPN_BY_PROTOCOL = {
-    "vless-ws": "http/1.1",
-    "httpupgrade": "http/1.1",
-    "xhttp-packet-up": "h2,http/1.1",
-    "xhttp-stream-up": "h2,http/1.1",
-    "xhttp-reality": "h2,http/1.1",
-}
+DEFAULT_ALPN_BY_PROTOCOL = {"vless-ws": "http/1.1", "httpupgrade": "http/1.1", "xhttp-packet-up": "h2,http/1.1", "xhttp-stream-up": "h2,http/1.1", "xhttp-reality": "h2,http/1.1"}
 DEFAULT_PORT = 443
 MIN_PORT, MAX_PORT = 1, 65535
 DEFAULT_SPEED_LIMIT = 0
 
 def log_activity(kind: str, message: str, level: str = "info"):
-    activity_logs.append({
-        "kind": kind,
-        "level": level,
-        "message": message,
-        "time": datetime.now().isoformat(),
-    })
+    activity_logs.append({"kind": kind, "level": level, "message": message, "time": datetime.now().isoformat()})
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 SESSION_COOKIE = "luffy_session"
@@ -2160,6 +2197,7 @@ async def startup():
     timeout = httpx.Timeout(30.0, connect=10.0)
     http_client = httpx.AsyncClient(limits=limits, timeout=timeout, follow_redirects=True)
     await load_state()
+    asyncio.create_task(periodic_save_state())  # <---- اضافه شدن این خط
     log_activity("system", "سرور X4G-Luffy راه‌اندازی شد", "ok")
 
 @app.on_event("shutdown")
@@ -2248,7 +2286,7 @@ def is_link_allowed(link: dict | None) -> bool:
 # ── Link Generation ───────────────────────────────────────────────────────────
 def generate_vless_link(
     uuid: str,
-    host: str,
+    host: str,  # این متغیر به صورت خودکار دامنه همان سروری که باز کردید را می‌گیرد
     remark: str = "X4G",
     protocol: str = DEFAULT_PROTOCOL,
     fingerprint: str | None = None,
@@ -2260,16 +2298,18 @@ def generate_vless_link(
     alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
     port_val = port or DEFAULT_PORT
     
-    # استفاده از آدرس دستی اگر وارد شده بود
+    # اگر در پنل آدرس دستی نداده باشید، دقیقاً دامنه‌ی فعلی (رندر یا ریل‌وی) را جایگزین می‌کند
     target_addr = address.strip() if address and address.strip() else host
+    sni_val = host
+    host_val = host
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "ws", "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "ws", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
     
     elif protocol == "httpupgrade":
         path = f"/upgrade/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
     
     elif protocol == "xhttp-reality":
         path = f"/xhttp/reality/{uuid}"
@@ -2278,9 +2318,9 @@ def generate_vless_link(
             "security": "reality",
             "type": "xhttp",
             "mode": "auto",
-            "host": host,
+            "host": host_val,
             "path": path,
-            "sni": host,
+            "sni": sni_val,
             "fp": fp,
             "pbk": "Z2V6uOrJEwdR4WefmJJm03JLocLztknxETJMaQTO9DM",
             "sid": uuid[:8],
@@ -2292,7 +2332,7 @@ def generate_vless_link(
         # xhttp-packet-up / xhttp-stream-up
         mode = protocol.replace("xhttp-", "")
         path = f"/xhttp-siz10/{mode}/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
 
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"vless://{uuid}@{target_addr}:{port_val}?{query}#{quote(remark)}"

@@ -2110,8 +2110,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 # ── State Management ──────────────────────────────────────────────────────────
 # ── Cloudflare KV Config (Smart & Dynamic) ──────────────────────────────────
 CF_SYNC_CONFIG = {
-    "worker_url": "",
-    "token": ""
+    # اگر فایل تنظیمات خام باشد، از این مقادیر پیش‌فرض استفاده می‌کند
+    "worker_url": os.environ.get("DEFAULT_KV_URL", "https://throbbing-moon-c264.sadramhp.workers.dev"),
+    "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
 
 async def get_cf_kv(key: str):
@@ -2147,7 +2148,7 @@ async def put_cf_kv(key: str, value: str):
 LAST_MODIFIED = "2000-01-01T00:00:00"
 LAST_TS = 0.0
 
-async def sync_with_cf(skip_structure=False):
+async def sync_with_cf(skip_structure=False, force_pull=False):
     global LAST_MODIFIED, LAST_TS, AUTH, CONFIG, CF_SYNC_CONFIG
     raw = await get_cf_kv("luffy_x4g_state")
     if not raw: return
@@ -2167,6 +2168,11 @@ async def sync_with_cf(skip_structure=False):
     else:
         is_newer = remote_time > LAST_MODIFIED
 
+    # قفل ایمنی: اگر سرور ما خام است (صفر یا ۱ کانفیگ دارد) اما کلودفلر پر است، همیشه کلودفلر برنده است!
+    remote_link_count = len(remote.get("links", {}))
+    if remote_link_count > 1 and len(LINKS) <= 1:
+        force_pull = True
+
     async with LINKS_LOCK:
         remote_links = remote.get("links", {})
         
@@ -2175,8 +2181,8 @@ async def sync_with_cf(skip_structure=False):
             if uid in LINKS:
                 LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
         
-        # 2. در صورتی که ساختار تغییر کرده و ادمین در حال ادیت نیست، اطلاعات جدید را بگیر
-        if is_newer and not skip_structure:
+        # 2. در صورتی که ساختار تغییر کرده یا دستور اجباری داریم، اطلاعات جدید را بگیر
+        if (is_newer or force_pull) and not skip_structure:
             for uid in list(LINKS.keys()):
                 if uid not in remote_links: del LINKS[uid]
             for uid, r_link in remote_links.items():
@@ -2562,6 +2568,9 @@ async def update_cf_sync_settings(request: Request, _=Depends(require_auth)):
     CF_SYNC_CONFIG["worker_url"] = body.get("worker_url", "").strip()
     if body.get("token"):
         CF_SYNC_CONFIG["token"] = body.get("token", "").strip()
+    
+    # دستور حیاتی: قبل از اینکه دیتای خام سرور جدید را ذخیره کنی، اول اطلاعات کلودفلر را به زور بگیر
+    await sync_with_cf(skip_structure=False, force_pull=True)
     
     await save_state(mutate=True)
     return {"ok": True}

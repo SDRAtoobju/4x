@@ -1168,9 +1168,12 @@ a{color:inherit;text-decoration:none}
           <button class="pw-submit" style="background:var(--green);color:#000;flex:1" onclick="saveCfSync()"><i class="ti ti-check"></i> ذخیره در سرور</button>
           <button class="pw-submit" style="background:var(--accent-d);color:var(--accent);flex:1;box-shadow:none" onclick="testCfSync()"><i class="ti ti-wifi"></i> تست اتصال</button>
         </div>
+        <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--card-b)">
+          <button class="pw-submit" style="background:var(--accent);color:#000;flex:1;box-shadow:none" onclick="uploadToCf()"><i class="ti ti-cloud-upload"></i> آپلود بکاپ در کلودفلر</button>
+          <button class="pw-submit" style="background:var(--purple);color:#000;flex:1;box-shadow:none" onclick="downloadFromCf()"><i class="ti ti-cloud-download"></i> دریافت دیتا از کلودفلر</button>
+        </div>
       </div>
     </div>
-
   </div>
 </section>
 </main>
@@ -1729,6 +1732,25 @@ async function testCfSync() {
   } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
 }
 
+async function uploadToCf() {
+  toast('در حال آپلود اطلاعات...', 'info');
+  try {
+    const r = await authF('/api/cf-sync/upload', {method: 'POST'});
+    if(r.ok) toast('اطلاعات با موفقیت در کلودفلر آپلود شد ✓', 'ok');
+    else throw new Error();
+  } catch(e) { toast('خطا در آپلود اطلاعات', 'err'); }
+}
+
+async function downloadFromCf() {
+  toast('در حال دریافت اطلاعات...', 'info');
+  try {
+    const r = await authF('/api/cf-sync/download', {method: 'POST'});
+    if(r.ok) {
+      toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
+      setTimeout(() => location.reload(), 1500);
+    } else throw new Error();
+  } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
+}
 document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
@@ -2112,7 +2134,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 CF_SYNC_CONFIG = {
     # اگر فایل تنظیمات خام باشد، از این مقادیر پیش‌فرض استفاده می‌کند
     "worker_url": os.environ.get("DEFAULT_KV_URL", "https://throbbing-moon-c264.sadramhp.workers.dev"),
-    "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra1388@")
+    "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
 
 async def get_cf_kv(key: str):
@@ -2222,9 +2244,6 @@ async def save_state(mutate=False):
     global LAST_MODIFIED, LAST_TS
     async with SAVE_LOCK:
         try:
-            # اگر ادمین تغییری داده (mutate=True)، اجازه نده اطلاعات کلودفلر روی آن رونویسی شود
-            await sync_with_cf(skip_structure=mutate)
-            
             now_ts = time.time()
             import datetime as dt
             now_str = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -2243,19 +2262,12 @@ async def save_state(mutate=False):
             }
             raw_data = json.dumps(data, ensure_ascii=False, indent=2)
 
-            await put_cf_kv("luffy_x4g_state", raw_data)
-
             DATA_DIR.mkdir(parents=True, exist_ok=True)
             tmp = DATA_FILE.with_suffix(".tmp")
             async with aiofiles.open(tmp, "w", encoding="utf-8") as f:
                 await f.write(raw_data)
             tmp.replace(DATA_FILE)
         except Exception as e: logger.warning(f"Save error: {e}")
-        
-async def periodic_save_state():
-    while True:
-        await asyncio.sleep(15)  # همگام‌سازی فوق‌سریع هر ۱۵ ثانیه
-        await save_state(mutate=False)
 
 # ── In-memory state ───────────────────────────────────────────────────────────
 connections: dict = {}
@@ -2330,7 +2342,6 @@ async def startup():
     timeout = httpx.Timeout(30.0, connect=10.0)
     http_client = httpx.AsyncClient(limits=limits, timeout=timeout, follow_redirects=True)
     await load_state()
-    asyncio.create_task(periodic_save_state())  # <---- اضافه شدن این خط
     log_activity("system", "سرور X4G-Luffy راه‌اندازی شد", "ok")
 
 @app.on_event("shutdown")
@@ -2535,6 +2546,29 @@ async def ensure_default_link():
                 asyncio.create_task(save_state(mutate=True))
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
+@app.post("/api/cf-sync/upload")
+async def manual_cf_upload(_=Depends(require_auth)):
+    import datetime as dt
+    data = {
+        "links": dict(LINKS),
+        "subs": dict(SUBS),
+        "password_hash": AUTH["password_hash"],
+        "secret": CONFIG["secret"],
+        "cf_sync": CF_SYNC_CONFIG,
+        "saved_ts": time.time(),
+        "saved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    raw_data = json.dumps(data, ensure_ascii=False, indent=2)
+    success = await put_cf_kv("luffy_x4g_state", raw_data)
+    if success: return {"ok": True}
+    raise HTTPException(status_code=500, detail="upload failed")
+
+@app.post("/api/cf-sync/download")
+async def manual_cf_download(_=Depends(require_auth)):
+    await sync_with_cf(skip_structure=False, force_pull=True)
+    await save_state(mutate=True)
+    return {"ok": True}
+
 @app.get("/test-cf")
 async def test_cloudflare():
     url = CF_SYNC_CONFIG.get("worker_url", "")
@@ -2568,9 +2602,6 @@ async def update_cf_sync_settings(request: Request, _=Depends(require_auth)):
     CF_SYNC_CONFIG["worker_url"] = body.get("worker_url", "").strip()
     if body.get("token"):
         CF_SYNC_CONFIG["token"] = body.get("token", "").strip()
-    
-    # دستور حیاتی: قبل از اینکه دیتای خام سرور جدید را ذخیره کنی، اول اطلاعات کلودفلر را به زور بگیر
-    await sync_with_cf(skip_structure=False, force_pull=True)
     
     await save_state(mutate=True)
     return {"ok": True}

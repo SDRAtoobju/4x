@@ -2604,20 +2604,20 @@ async def test_cloudflare():
     endpoint = f"{url.rstrip('/')}/connection_test"
     
     if not http_client:
-        return {"error": "سیستم اتصال سرور (http_client) لود نشده است، سرور را ریستارت کنید."}
+        return {"error": "سیستم اتصال سرور لود نشده است."}
     
     try:
         put_resp = await http_client.put(endpoint, content="ok", headers={"X-Custom-Auth": token})
         if put_resp.status_code != 200:
-            return {"error": f"خطای کلودفلر (کد {put_resp.status_code}): آیا توکن را درست وارد کردید؟"}
+            # این خط مچ سرور را می‌گیرد و رمز ارسالی را فاش می‌کند!
+            return {"error": f"ارور 401: پنل شما دقیقاً در حال ارسال این توکن است: «{token}». آیا این توکن درست است؟"}
             
         get_resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
         if get_resp.status_code != 200:
-            return {"error": f"خطای دیتابیس (کد {get_resp.status_code}): دیتابیس KV متصل نیست."}
+            return {"error": f"خطای دیتابیس (کد {get_resp.status_code}): آیا دیتابیس KV را Bind کردید؟"}
             
         return {"success": True, "message": "ارتباط با ورکر با موفقیت برقرار شد!"}
     except Exception as e:
-        # این بخش خطای واقعی Railway را به شما نشان می‌دهد
         return {"error": f"خطای سرور شما: {str(e)}"}
 
 @app.get("/api/settings/cf-sync")

@@ -2592,23 +2592,33 @@ async def manual_cf_download(_=Depends(require_auth)):
 
 @app.get("/test-cf")
 async def test_cloudflare():
-    url = CF_SYNC_CONFIG.get("worker_url", "")
-    token = CF_SYNC_CONFIG.get("token", "")
+    url = CF_SYNC_CONFIG.get("worker_url", "").strip()
+    token = CF_SYNC_CONFIG.get("token", "").strip()
     
     if not url or not token:
         return {"error": "آدرس ورکر یا توکن در تنظیمات پنل وارد نشده است."}
-    
+        
+    if not url.startswith("http"):
+        url = "https://" + url
+        
     endpoint = f"{url.rstrip('/')}/connection_test"
     
-    put_resp = await http_client.put(endpoint, content="ok", headers={"X-Custom-Auth": token})
-    if put_resp.status_code != 200:
-        return {"step": "تست ذخیره (PUT)", "status_code": put_resp.status_code}
-        
-    get_resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
-    if get_resp.status_code != 200:
-        return {"step": "تست خواندن (GET)", "status_code": get_resp.status_code}
-        
-    return {"success": True, "message": "ارتباط با ورکر کلودفلر موفقیت‌آمیز است!"}
+    if not http_client:
+        return {"error": "سیستم اتصال سرور (http_client) لود نشده است، سرور را ریستارت کنید."}
+    
+    try:
+        put_resp = await http_client.put(endpoint, content="ok", headers={"X-Custom-Auth": token})
+        if put_resp.status_code != 200:
+            return {"error": f"خطای کلودفلر (کد {put_resp.status_code}): آیا توکن را درست وارد کردید؟"}
+            
+        get_resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
+        if get_resp.status_code != 200:
+            return {"error": f"خطای دیتابیس (کد {get_resp.status_code}): دیتابیس KV متصل نیست."}
+            
+        return {"success": True, "message": "ارتباط با ورکر با موفقیت برقرار شد!"}
+    except Exception as e:
+        # این بخش خطای واقعی Railway را به شما نشان می‌دهد
+        return {"error": f"خطای سرور شما: {str(e)}"}
 
 @app.get("/api/settings/cf-sync")
 async def get_cf_sync_settings(_=Depends(require_auth)):

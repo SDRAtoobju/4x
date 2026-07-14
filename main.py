@@ -1752,26 +1752,6 @@ async function downloadFromCf() {
   } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
 }
 
-async function uploadToCf() {
-  toast('در حال آپلود اطلاعات...', 'info');
-  try {
-    const r = await authF('/api/cf-sync/upload', {method: 'POST'});
-    if(r.ok) toast('اطلاعات با موفقیت در کلودفلر آپلود شد ✓', 'ok');
-    else throw new Error();
-  } catch(e) { toast('خطا در آپلود اطلاعات', 'err'); }
-}
-
-async function downloadFromCf() {
-  toast('در حال دریافت اطلاعات...', 'info');
-  try {
-    const r = await authF('/api/cf-sync/download', {method: 'POST'});
-    if(r.ok) {
-      toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
-      setTimeout(() => location.reload(), 1500);
-    } else throw new Error();
-  } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
-}
-
 document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
@@ -2153,7 +2133,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 # ── State Management ──────────────────────────────────────────────────────────
 # ── Cloudflare KV Config (Smart & Dynamic) ──────────────────────────────────
 CF_SYNC_CONFIG = {
-    # اگر فایل تنظیمات خام باشد، از این مقادیر پیش‌فرض استفاده می‌کند
     "worker_url": os.environ.get("DEFAULT_KV_URL", "https://da-base.ali1-personal.workers.dev"),
     "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
@@ -2211,7 +2190,6 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
     else:
         is_newer = remote_time > LAST_MODIFIED
 
-    # قفل ایمنی: اگر سرور ما خام است (صفر یا ۱ کانفیگ دارد) اما کلودفلر پر است، همیشه کلودفلر برنده است!
     remote_link_count = len(remote.get("links", {}))
     if remote_link_count > 1 and len(LINKS) <= 1:
         force_pull = True
@@ -2219,12 +2197,10 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
     async with LINKS_LOCK:
         remote_links = remote.get("links", {})
         
-        # 1. همیشه مصرف ترافیک را ترکیب کن (اولویت با عدد بزرگتر)
         for uid, r_link in remote_links.items():
             if uid in LINKS:
                 LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
         
-        # 2. در صورتی که ساختار تغییر کرده یا دستور اجباری داریم، اطلاعات جدید را بگیر
         if (is_newer or force_pull) and not skip_structure:
             for uid in list(LINKS.keys()):
                 if uid not in remote_links: del LINKS[uid]
@@ -2292,7 +2268,12 @@ async def save_state(mutate=False):
 
 # ── In-memory state ───────────────────────────────────────────────────────────
 connections: dict = {}
-stats = {"total_bytes": 0, "total_requests": 0, "total_errors": 0, "start_time": time.time()}
+stats = {
+    "total_bytes": 0,
+    "total_requests": 0,
+    "total_errors": 0,
+    "start_time": time.time(),
+}
 error_logs: deque = deque(maxlen=50)
 activity_logs: deque = deque(maxlen=200)
 hourly_traffic: dict = defaultdict(int)
@@ -2304,17 +2285,31 @@ SUBS_LOCK = asyncio.Lock()
 XHTTP_LOCK = asyncio.Lock()
 SESSIONS_LOCK = asyncio.Lock()
 
+# اضافه شدن پروتکل‌های جدید
 PROTOCOLS = ("vless-ws", "xhttp-packet-up", "xhttp-stream-up", "httpupgrade", "xhttp-reality")
 DEFAULT_PROTOCOL = "vless-ws"
+
 FINGERPRINTS = ("chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized")
 DEFAULT_FINGERPRINT = "chrome"
-DEFAULT_ALPN_BY_PROTOCOL = {"vless-ws": "http/1.1", "httpupgrade": "http/1.1", "xhttp-packet-up": "h2,http/1.1", "xhttp-stream-up": "h2,http/1.1", "xhttp-reality": "h2,http/1.1"}
+
+DEFAULT_ALPN_BY_PROTOCOL = {
+    "vless-ws": "http/1.1",
+    "httpupgrade": "http/1.1",
+    "xhttp-packet-up": "h2,http/1.1",
+    "xhttp-stream-up": "h2,http/1.1",
+    "xhttp-reality": "h2,http/1.1",
+}
 DEFAULT_PORT = 443
 MIN_PORT, MAX_PORT = 1, 65535
 DEFAULT_SPEED_LIMIT = 0
 
 def log_activity(kind: str, message: str, level: str = "info"):
-    activity_logs.append({"kind": kind, "level": level, "message": message, "time": datetime.now().isoformat()})
+    activity_logs.append({
+        "kind": kind,
+        "level": level,
+        "message": message,
+        "time": datetime.now().isoformat(),
+    })
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 SESSION_COOKIE = "luffy_session"
@@ -2367,7 +2362,7 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
-    await save_state(mutate=True)
+    await save_state()
     if http_client:
         await http_client.aclose()
 
@@ -2451,7 +2446,7 @@ def is_link_allowed(link: dict | None) -> bool:
 # ── Link Generation ───────────────────────────────────────────────────────────
 def generate_vless_link(
     uuid: str,
-    host: str,  # این متغیر به صورت خودکار دامنه همان سروری که باز کردید را می‌گیرد
+    host: str,
     remark: str = "X4G",
     protocol: str = DEFAULT_PROTOCOL,
     fingerprint: str | None = None,
@@ -2463,18 +2458,16 @@ def generate_vless_link(
     alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
     port_val = port or DEFAULT_PORT
     
-    # اگر در پنل آدرس دستی نداده باشید، دقیقاً دامنه‌ی فعلی (رندر یا ریل‌وی) را جایگزین می‌کند
+    # استفاده از آدرس دستی اگر وارد شده بود
     target_addr = address.strip() if address and address.strip() else host
-    sni_val = host
-    host_val = host
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "ws", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "ws", "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
     
     elif protocol == "httpupgrade":
         path = f"/upgrade/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
     
     elif protocol == "xhttp-reality":
         path = f"/xhttp/reality/{uuid}"
@@ -2483,9 +2476,9 @@ def generate_vless_link(
             "security": "reality",
             "type": "xhttp",
             "mode": "auto",
-            "host": host_val,
+            "host": host,
             "path": path,
-            "sni": sni_val,
+            "sni": host,
             "fp": fp,
             "pbk": "Z2V6uOrJEwdR4WefmJJm03JLocLztknxETJMaQTO9DM",
             "sid": uuid[:8],
@@ -2497,7 +2490,7 @@ def generate_vless_link(
         # xhttp-packet-up / xhttp-stream-up
         mode = protocol.replace("xhttp-", "")
         path = f"/xhttp-siz10/{mode}/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
 
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"vless://{uuid}@{target_addr}:{port_val}?{query}#{quote(remark)}"
@@ -2564,7 +2557,7 @@ async def ensure_default_link():
                     "speed_limit_bytes": 0,
                     "address": "",
                 }
-                asyncio.create_task(save_state(mutate=True))
+                asyncio.create_task(save_state())
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
 @app.post("/api/cf-sync/upload")
@@ -2609,7 +2602,6 @@ async def test_cloudflare():
     try:
         put_resp = await http_client.put(endpoint, content="ok", headers={"X-Custom-Auth": token})
         if put_resp.status_code != 200:
-            # این خط مچ سرور را می‌گیرد و رمز ارسالی را فاش می‌کند!
             return {"error": f"ارور 401: پنل شما دقیقاً در حال ارسال این توکن است: «{token}». آیا این توکن درست است؟"}
             
         get_resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
@@ -2677,7 +2669,7 @@ async def api_change_password(request: Request, token=Depends(require_auth)):
     async with SESSIONS_LOCK:
         SESSIONS.clear()
         SESSIONS[token] = time.time() + SESSION_TTL
-    await save_state(mutate=True)
+    await save_state()
     log_activity("auth", "رمز عبور پنل تغییر کرد", "ok")
     return {"ok": True}
 
@@ -2784,7 +2776,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
                 ids = SUBS[sub_id].setdefault("link_ids", [])
                 if uid not in ids: ids.append(uid)
                 
-    asyncio.create_task(save_state(mutate=True))
+    asyncio.create_task(save_state())
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
     
     host = get_host(request)
@@ -2852,7 +2844,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
             if new_sub and new_sub in SUBS:
                 if uid not in SUBS[new_sub].setdefault("link_ids", []): SUBS[new_sub]["link_ids"].append(uid)
 
-    asyncio.create_task(save_state(mutate=True))
+    asyncio.create_task(save_state())
     return {"ok": True}
 
 @app.delete("/api/links/{uid}")
@@ -2866,7 +2858,7 @@ async def delete_link(uid: str, _=Depends(require_auth)):
         async with SUBS_LOCK:
             if sub_id in SUBS and uid in SUBS[sub_id].get("link_ids", []):
                 SUBS[sub_id]["link_ids"].remove(uid)
-    asyncio.create_task(save_state(mutate=True))
+    asyncio.create_task(save_state())
     log_activity("link", f"کانفیگ «{label}» حذف شد", "err")
     return {"ok": True}
 
@@ -2881,7 +2873,7 @@ async def create_sub(request: Request, _=Depends(require_auth)):
     uuid_key = secrets.token_urlsafe(16)
     async with SUBS_LOCK:
         SUBS[sub_id] = {"name": name, "desc": desc, "password_hash": hash_password(password) if password else None, "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), "link_ids": []}
-    asyncio.create_task(save_state(mutate=True))
+    asyncio.create_task(save_state())
     log_activity("sub", f"گروه «{name}» ساخته شد", "ok")
     host = get_host(request)
     return {"sub_id": sub_id, **SUBS[sub_id], "public_url": f"https://{host}/p/{uuid_key}", "sub_url": f"https://{host}/sub-group/{uuid_key}"}
@@ -2911,7 +2903,7 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
         if sub_id not in SUBS: raise HTTPException(status_code=404)
         s = SUBS[sub_id]
         if "link_ids" in body: s["link_ids"] = list(body["link_ids"])
-    asyncio.create_task(save_state(mutate=True))
+    asyncio.create_task(save_state())
     return {"ok": True}
 
 @app.delete("/api/subs/{sub_id}")
@@ -2923,7 +2915,7 @@ async def delete_sub(sub_id: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
         for link in LINKS.values():
             if link.get("sub_id") == sub_id: link["sub_id"] = None
-    asyncio.create_task(save_state(mutate=True))
+    asyncio.create_task(save_state())
     log_activity("sub", f"گروه «{name}» حذف شد", "warn")
     return {"ok": True}
 
@@ -2999,6 +2991,7 @@ async def throttle(uuid: str, nbytes: int):
 
 def reset_bucket(uuid: str): _buckets.pop(uuid, None)
 
+# ── WS / HTTPUpgrade Core Tunnels ─────────────────────────────────────────────
 # ── Speed & Traffic Optimizer ─────────────────────────────────────────────────
 current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
 
@@ -3014,18 +3007,14 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
-RELAY_BUF = 131072  # (128KB) تعادل طلایی: به اندازه کافی بزرگ برای دانلود سریع، کوچک برای پینگ پایین
+RELAY_BUF = 65536  # کاهش به 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """ترکیب جادویی: پینگ پایین (NODELAY) + بافرهای بزرگ ۴ مگابایتی سیستم‌عامل برای سرعت بالای دانلود"""
+    """تنظیمات سوکت برای کاهش پینگ و جلوگیری از تاخیر بسته‌ها (TCP_NODELAY)"""
     try:
         sock = writer.transport.get_extra_info("socket")
         if sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4194304)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4194304)
-            if hasattr(socket, "TCP_QUICKACK"):
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_QUICKACK, 1)
     except Exception:
         pass
 
@@ -3063,8 +3052,8 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            # ثبت ترافیک هر 512KB برای کاهش فشار روی CPU
-            if local_bytes >= 524288: 
+            # ثبت ترافیک هر 256KB برای واکنش‌گرایی سریع‌تر (بدون فشار به CPU)
+            if local_bytes >= 262144: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3077,12 +3066,9 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            # تخلیه بافر روی 256KB: اجازه می‌دهد دانلود سرعت بگیرد اما خفگی ایجاد نکند
-            if writer.transport.get_write_buffer_size() > 262144: 
+            # درین کردنِ زودهنگام روی 64KB تا جریان آپلود پیوسته (Smooth) بماند
+            if writer.transport.get_write_buffer_size() > 65536: 
                 await writer.drain()
-                
-            # دستور جادویی برای روان بودن شبکه و پینگ پایین
-            await asyncio.sleep(0)
     except Exception: pass
     finally:
         if local_bytes > 0:
@@ -3097,13 +3083,13 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
     local_bytes = 0
     try:
         while True:
-            data = await reader.read(RELAY_BUF)
+            data = await reader.read(65536) # خواندن نرم و پیوسته
             if not data: break
             
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= 524288: 
+            if local_bytes >= 262144: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3116,7 +3102,8 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
             
-            # نفس کشیدن پردازنده برای پاسخ به بقیه کاربران و نرم شدن یوتیوب
+            # خط جادویی: اجازه می‌دهد رویدادهای زنده نگه‌داشتنِ WebSocket (مثل PING/PONG)
+            # نفس بکشند و از گیر کردنِ ویدیوهای یوتیوب (Bufferbloat) کاملاً جلوگیری شود.
             await asyncio.sleep(0)
             
     except Exception: pass
@@ -3150,6 +3137,7 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         
         command, address, port, payload = await parse_vless_header(first_chunk)
         
+        # ثبت ترافیک پکتِ اولیه
         await check_and_use(uuid, len(first_chunk))
         connections[conn_id]["bytes"] += len(first_chunk)
         
@@ -3173,7 +3161,6 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
             try: writer.close()
             except: pass
         connections.pop(conn_id, None)
-
 # ── XHTTP Core Tunnels (Ultra Optimized) ──────────────────────────────────────
 router = APIRouter()
 xhttp_sessions: dict = {}
@@ -3205,30 +3192,21 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     first = True
     sess = xhttp_sessions.get(session_id)
     conn_info = connections.get(sess["conn_id"]) if sess else None
-    local_bytes = 0
     try:
         while True:
-            data = await reader.read(RELAY_BUF)
+            data = await reader.read(RELAY_BUF) # استفاده از بافر 64KB
             if not data: break
-            
-            size = len(data)
-            local_bytes += size
-            if local_bytes >= 1048576:
-                if not await check_and_use(uuid, local_bytes): break
-                if conn_info: conn_info["bytes"] += local_bytes
-                local_bytes = 0
+            if not await check_and_use(uuid, len(data)): break
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(size)
+                if rate > 0: await _get_bucket(uuid, rate).consume(len(data))
                 
+            if conn_info: conn_info["bytes"] += len(data)
             await down_q.put((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
     finally:
-        if local_bytes > 0:
-            await check_and_use(uuid, local_bytes)
-            if conn_info: conn_info["bytes"] += local_bytes
         await _teardown_xhttp(session_id)
 
 async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -> dict:
@@ -3238,8 +3216,8 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
-        # ظرفیت متعادل 2048: رم سرور را پر نمی‌کند و از تاخیر زیاد (Bufferbloat) جلوگیری می‌کند
-        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=2048), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
+        # افزایش ظرفیت صف برای جلوگیری از Drop شدن پکت‌های ویدیو
+        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=1024), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
         xhttp_sessions[session_id] = sess
         return sess
 
@@ -3311,21 +3289,16 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
     if sess.get("closed"): raise HTTPException(status_code=404)
     
     conn_info = connections.get(sess["conn_id"])
-    local_bytes = 0
     try:
         async for chunk in request.stream():
             if not chunk: continue
-            size = len(chunk)
-            local_bytes += size
-            
-            if local_bytes >= 1048576:
-                if not await check_and_use(uuid, local_bytes): raise HTTPException(status_code=403)
-                if conn_info: conn_info["bytes"] += local_bytes
-                local_bytes = 0
+            if not await check_and_use(uuid, len(chunk)): raise HTTPException(status_code=403)
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(size)
+                if rate > 0: await _get_bucket(uuid, rate).consume(len(chunk))
+                
+            if conn_info: conn_info["bytes"] += len(chunk)
 
             if sess["writer"] is None:
                 reader, writer = await _open_tcp_from_header(chunk)
@@ -3334,22 +3307,14 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > 1048576:
+            if sess["writer"].transport.get_write_buffer_size() > 524288:
                 await sess["writer"].drain()
-            
-            # دستور جادویی جلوگیری از خفگی شبکه در XHTTP
-            await asyncio.sleep(0)
     except Exception:
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=502)
-    finally:
-        if local_bytes > 0:
-            await check_and_use(uuid, local_bytes)
-            if conn_info: conn_info["bytes"] += local_bytes
     return {"ok": True}
 
 app.include_router(router)
-
 # ── GUI Routes ────────────────────────────────────────────────────────────────
 @app.get("/p/{uuid_key}", response_class=HTMLResponse)
 async def public_sub_page(uuid_key: str, request: Request):

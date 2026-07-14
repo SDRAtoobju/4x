@@ -2133,7 +2133,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 # ── Cloudflare KV Config (Smart & Dynamic) ──────────────────────────────────
 CF_SYNC_CONFIG = {
     # اگر فایل تنظیمات خام باشد، از این مقادیر پیش‌فرض استفاده می‌کند
-    "worker_url": os.environ.get("DEFAULT_KV_URL", "https://throbbing-moon-c264.sadramhp.workers.dev"),
+    "worker_url": os.environ.get("DEFAULT_KV_URL", "https://da-base.ali1-personal.workers.dev"),
     "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
 

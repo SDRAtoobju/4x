@@ -1749,8 +1749,29 @@ async function downloadFromCf() {
       toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
       setTimeout(() => location.reload(), 1500);
     } else throw new Error();
+  } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
+}
+
+async function uploadToCf() {
+  toast('در حال آپلود اطلاعات...', 'info');
+  try {
+    const r = await authF('/api/cf-sync/upload', {method: 'POST'});
+    if(r.ok) toast('اطلاعات با موفقیت در کلودفلر آپلود شد ✓', 'ok');
+    else throw new Error();
+  } catch(e) { toast('خطا در آپلود اطلاعات', 'err'); }
+}
+
+async function downloadFromCf() {
+  toast('در حال دریافت اطلاعات...', 'info');
+  try {
+    const r = await authF('/api/cf-sync/download', {method: 'POST'});
+    if(r.ok) {
+      toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
+      setTimeout(() => location.reload(), 1500);
+    } else throw new Error();
   } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
 }
+
 document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;

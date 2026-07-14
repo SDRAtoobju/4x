@@ -3014,15 +3014,14 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
-RELAY_BUF = 262144  # ارتقاء به 256KB برای بالاترین توان عملیاتی
+RELAY_BUF = 131072  # (128KB) تعادل طلایی: به اندازه کافی بزرگ برای دانلود سریع، کوچک برای پینگ پایین
 
 def _tune_socket(writer: asyncio.StreamWriter):
-    """تنظیمات حرفه‌ای سوکت برای به حداقل رساندن بافر‌بلوت و حداکثر سرعت"""
+    """ترکیب جادویی: پینگ پایین (NODELAY) + بافرهای بزرگ ۴ مگابایتی سیستم‌عامل برای سرعت بالای دانلود"""
     try:
         sock = writer.transport.get_extra_info("socket")
         if sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            # باز کردن بافر دریافت و ارسال تا ۴ مگابایت برای استریم‌های سنگین
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4194304)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4194304)
             if hasattr(socket, "TCP_QUICKACK"):
@@ -3064,8 +3063,8 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            # ذخیره ترافیک هر ۱ مگابایت برای جلوگیری از استفاده بی‌مورد پردازنده
-            if local_bytes >= 1048576: 
+            # ثبت ترافیک هر 512KB برای کاهش فشار روی CPU
+            if local_bytes >= 524288: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3078,9 +3077,12 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            # اجازه به بافر شدن دیتای خروجی تا ۱ مگابایت برای پهنای باند بی‌نقص
-            if writer.transport.get_write_buffer_size() > 1048576: 
+            # تخلیه بافر روی 256KB: اجازه می‌دهد دانلود سرعت بگیرد اما خفگی ایجاد نکند
+            if writer.transport.get_write_buffer_size() > 262144: 
                 await writer.drain()
+                
+            # دستور جادویی برای روان بودن شبکه و پینگ پایین
+            await asyncio.sleep(0)
     except Exception: pass
     finally:
         if local_bytes > 0:
@@ -3101,7 +3103,7 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= 1048576: 
+            if local_bytes >= 524288: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3113,6 +3115,9 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
                 
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
+            
+            # نفس کشیدن پردازنده برای پاسخ به بقیه کاربران و نرم شدن یوتیوب
+            await asyncio.sleep(0)
             
     except Exception: pass
     finally:
@@ -3233,8 +3238,8 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
-        # افزایش ظرفیت صف به 4096 برای جلوگیری از پریدن فریم‌ها در ویدیو 4K/8K
-        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=4096), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
+        # ظرفیت متعادل 2048: رم سرور را پر نمی‌کند و از تاخیر زیاد (Bufferbloat) جلوگیری می‌کند
+        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=2048), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
         xhttp_sessions[session_id] = sess
         return sess
 
@@ -3329,8 +3334,11 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > 2097152:
+            if sess["writer"].transport.get_write_buffer_size() > 1048576:
                 await sess["writer"].drain()
+            
+            # دستور جادویی جلوگیری از خفگی شبکه در XHTTP
+            await asyncio.sleep(0)
     except Exception:
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=502)

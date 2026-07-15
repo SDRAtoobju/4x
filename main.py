@@ -1312,7 +1312,9 @@ async function loadLinks(){
     const {subs=[]}=await sr.json();
     allSubsList=subs;allLinksList=links;
     const nlSub=document.getElementById('nl-sub');
+    const currentSubVal = nlSub.value; // ذخیره انتخاب فعلی کاربر در حین رفرش
     nlSub.innerHTML='<option value="">— بدون گروه —</option>'+subs.map(s=>`<option value="${esc(s.sub_id)}">${esc(s.name)}</option>`).join('');
+    nlSub.value = currentSubVal; // برگرداندن انتخاب کاربر
     document.getElementById('links-nb').textContent=links.length;
     document.getElementById('links-pg-cnt').textContent=toFa(links.length)+' کانفیگ';
     document.getElementById('lsummary-badge').textContent=toFa(links.length);
@@ -1751,26 +1753,6 @@ async function testCfSync() {
     const d = await r.json();
     if(d.success) toast(d.message, 'ok');
     else toast(d.error || 'ارتباط با ورکر برقرار نشد', 'err');
-  } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
-}
-
-async function uploadToCf() {
-  toast('در حال آپلود اطلاعات...', 'info');
-  try {
-    const r = await authF('/api/cf-sync/upload', {method: 'POST'});
-    if(r.ok) toast('اطلاعات با موفقیت در کلودفلر آپلود شد ✓', 'ok');
-    else throw new Error();
-  } catch(e) { toast('خطا در آپلود اطلاعات', 'err'); }
-}
-
-async function downloadFromCf() {
-  toast('در حال دریافت اطلاعات...', 'info');
-  try {
-    const r = await authF('/api/cf-sync/download', {method: 'POST'});
-    if(r.ok) {
-      toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
-      setTimeout(() => location.reload(), 1500);
-    } else throw new Error();
   } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
 }
 
@@ -2485,10 +2467,10 @@ def generate_vless_link(
     alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
     port_val = port or DEFAULT_PORT
     
-    # اگر در پنل آدرس دستی نداده باشید، دقیقاً دامنه‌ی فعلی (رندر یا ریل‌وی) را جایگزین می‌کند
+    # اگر آدرس دستی وارد شده باشد، هم برای اتصال و هم برای SNI و Host استفاده می‌شود
     target_addr = address.strip() if address and address.strip() else host
-    sni_val = host
-    host_val = host
+    sni_val = target_addr
+    host_val = target_addr
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
@@ -2528,7 +2510,7 @@ def vless_link_for_link(link: dict, uid: str, host: str) -> str:
     proto = link.get("protocol", DEFAULT_PROTOCOL)
     return generate_vless_link(
         uid, host,
-        remark=f"Sadra-{link.get('label','')}",
+        remark=f"{link.get('label','')}",
         protocol=proto,
         fingerprint=link.get("fingerprint"),
         alpn=link.get("alpn"),
@@ -2953,13 +2935,17 @@ async def delete_sub(sub_id: str, _=Depends(require_auth)):
     log_activity("sub", f"گروه «{name}» حذف شد", "warn")
     return {"ok": True}
 
-# ── Sub URL Endpoints ─────────────────────────────────────────────────────────
 @app.get("/sub/{uuid}")
 async def subscription_single(uuid: str, request: Request):
     async with LINKS_LOCK: link = LINKS.get(uuid)
     if not link or not is_link_allowed(link): raise HTTPException(status_code=404)
     host = get_host(request)
-    content = base64.b64encode(vless_link_for_link(link, uuid, host).encode()).decode()
+    raw_text = vless_link_for_link(link, uuid, host)
+    
+    if request.query_params.get("plain") == "1":
+        return Response(content=raw_text, media_type="text/plain", headers={"profile-title": quote(link["label"])})
+        
+    content = base64.b64encode(raw_text.encode("utf-8")).decode("utf-8")
     return Response(content=content, media_type="text/plain", headers={"profile-title": quote(link["label"])})
 
 @app.get("/sub-all")
@@ -2967,7 +2953,12 @@ async def subscription_all(request: Request, _=Depends(require_auth)):
     host = get_host(request)
     async with LINKS_LOCK:
         lines = [vless_link_for_link(d, uid, host) for uid, d in LINKS.items() if is_link_allowed(d)]
-    content = base64.b64encode("\n".join(lines).encode()).decode()
+    raw_text = "\n".join(lines)
+    
+    if request.query_params.get("plain") == "1":
+        return Response(content=raw_text, media_type="text/plain")
+        
+    content = base64.b64encode(raw_text.encode("utf-8")).decode("utf-8")
     return Response(content=content, media_type="text/plain")
 
 @app.get("/sub-group/{uuid_key}")
@@ -2980,7 +2971,13 @@ async def sub_group_subscription(uuid_key: str, request: Request):
     host = get_host(request)
     async with LINKS_LOCK:
         lines = [vless_link_for_link(LINKS.get(lid), lid, host) for lid in sub.get("link_ids", []) if LINKS.get(lid) and is_link_allowed(LINKS.get(lid))]
-    content = base64.b64encode("\n".join(lines).encode()).decode()
+    
+    raw_text = "\n".join(lines)
+    
+    if request.query_params.get("plain") == "1":
+        return Response(content=raw_text, media_type="text/plain", headers={"profile-title": quote(sub["name"])})
+        
+    content = base64.b64encode(raw_text.encode("utf-8")).decode("utf-8")
     return Response(content=content, media_type="text/plain", headers={"profile-title": quote(sub["name"])})
 
 # ── Speed Limit Logic ─────────────────────────────────────────────────────────

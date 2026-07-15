@@ -25,13 +25,13 @@ from fastapi.responses import Response, HTMLResponse, JSONResponse, RedirectResp
 from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("Luffy-X4G")
+logger = logging.getLogger("Sadra-Sadra")
 
 # ==============================================================================
 # HTML Templates & Branding
 # ==============================================================================
 
-# لوگوی وکتور کلاه Luffy (بدون نیاز به base64 سنگین)
+# لوگوی وکتور کلاه Sadra (بدون نیاز به base64 سنگین)
 LOGO_SVG = """<svg viewBox="0 0 84 68" fill="none" style="width:100%;height:100%;background:#0c0c10">
   <ellipse cx="42" cy="52" rx="40" ry="11" fill="#C8900A" opacity=".85"/>
   <ellipse cx="42" cy="52" rx="40" ry="11" fill="none" stroke="#FFD700" stroke-width="1.4" opacity=".6"/>
@@ -88,7 +88,7 @@ input:focus+.ic{color:var(--accent)}
   <div class="card">
     <div class="brand">
       <div class="brand-img">__LOGO_SVG__</div>
-      <div><div class="brand-name">Sadra PANEL</div><div class="brand-sub">Powered by X4G v9.5</div></div>
+      <div><div class="brand-name">Sadra PANEL</div><div class="brand-sub">Powered by Sadra v9.5</div></div>
     </div>
     <h1>ورود به پنل</h1>
     <p class="sub">رمز عبور را برای دسترسی به داشبورد وارد کنید</p>
@@ -131,7 +131,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Luffy Panel</title>
+<title>Sadra Panel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -749,6 +749,13 @@ a{color:inherit;text-decoration:none}
       <div class="fg" style="flex:1"><label>محدودیت سرعت (0 = نامحدود)</label><input class="fi" id="el-speed" type="number" min="0" step="0.5" style="width:100%"></div>
       <div class="fg"><label>واحد</label><select class="fs" id="el-speed-unit"><option value="MBIT">Mbps</option><option value="KB">KB/s</option><option value="MB">MB/s</option></select></div>
     </div>
+    <div class="fg" style="margin-bottom:16px">
+      <label>نوع مصرف (بهینه‌سازی)</label>
+      <select class="fs" id="el-usage" style="width:100%">
+        <option value="web">وب‌گردی، اینستاگرام و یوتوب</option>
+        <option value="download">دانلود و تلگرام</option>
+      </select>
+    </div>
     <div class="cl"><i class="ti ti-info-circle"></i><span>برای حفظ انقضای فعلی، فیلد انقضا را صفر بگذارید.</span></div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-o" onclick="closeModal('modal-edit-link')">انصراف</button>
@@ -759,7 +766,7 @@ a{color:inherit;text-decoration:none}
 <div class="mob-top">
   <div class="ml">
     <div class="mob-logo">__LOGO_SVG__</div>
-    <span class="mob-title">LUFFY PANEL</span>
+    <span class="mob-title">Sadra PANEL</span>
   </div>
   <div class="mob-right">
     <button class="theme-mob" id="theme-mob-btn" onclick="toggleTheme()"><i class="ti ti-sun" id="theme-mob-icon"></i></button>
@@ -771,7 +778,7 @@ a{color:inherit;text-decoration:none}
   <button class="sb-close" id="close-sb"><i class="ti ti-x"></i></button>
   <div class="logo">
     <div class="logo-img">__LOGO_SVG__</div>
-    <div><div class="logo-name">LUFFY PANEL</div><div class="logo-sub">Powered by X4G v9.5</div></div>
+    <div><div class="logo-name">Sadra PANEL</div><div class="logo-sub">Powered by Sadra v9.5</div></div>
   </div>
   <div class="nav-wrap">
     <div class="nav-sec">پنل</div>
@@ -866,6 +873,16 @@ a{color:inherit;text-decoration:none}
         </div>
       </div>
       
+      <div class="cp-row">
+        <div class="cp-block" style="flex:1">
+          <div class="cp-block-label"><i class="ti ti-cpu"></i> نوع مصرف (بهینه‌سازی ترافیک)</div>
+          <select class="cp-input-full fs" id="nl-usage">
+            <option value="web" selected>وب‌گردی، اینستاگرام و یوتوب (پینگ پایین)</option>
+            <option value="download">دانلود و تلگرام (سرعت و پهنای باند بالا)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="cp-block mb16">
         <div class="cp-block-label"><i class="ti ti-world"></i> آدرس اتصال (Address / SNI)</div>
         <div style="display:flex;gap:8px">
@@ -1105,7 +1122,7 @@ a{color:inherit;text-decoration:none}
       </div>
       <div class="srv-tiles">
         <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-route"></i></div><div class="srv-tile-text"><div class="srv-tile-label">پورت پیش‌فرض</div><div class="srv-tile-val">443 (TLS)</div></div></div>
-        <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-versions"></i></div><div class="srv-tile-text"><div class="srv-tile-label">نسخه</div><div class="srv-tile-val">v9.5 Luffy</div></div></div>
+        <div class="srv-tile"><div class="srv-tile-icon"><i class="ti ti-versions"></i></div><div class="srv-tile-text"><div class="srv-tile-label">نسخه</div><div class="srv-tile-val">v9.5 Sadra</div></div></div>
       </div>
     </div>
     <div class="pw-panel">
@@ -1151,7 +1168,7 @@ a{color:inherit;text-decoration:none}
         <div class="form-row" style="margin-bottom:12px">
           <div class="fg" style="flex:1">
             <label>آدرس ورکر واسط (Worker URL)</label>
-            <input class="pw-input" id="cf-worker-url" placeholder="https://luffy-kv-proxy.yourname.workers.dev">
+            <input class="pw-input" id="cf-worker-url" placeholder="https://Sadra-kv-proxy.yourname.workers.dev">
           </div>
         </div>
         <div class="form-row" style="margin-bottom:12px">
@@ -1178,7 +1195,7 @@ a{color:inherit;text-decoration:none}
 </section>
 </main>
 <script>
-let isDark=localStorage.getItem('x4g-theme')!=='light';
+let isDark=localStorage.getItem('Sadra-theme')!=='light';
 function applyTheme(dark){
   document.documentElement.setAttribute('data-theme',dark?'dark':'light');
   const icon=dark?'ti-sun':'ti-moon',label=dark?'تم روشن':'تم تاریک';
@@ -1186,7 +1203,7 @@ function applyTheme(dark){
   document.getElementById('theme-label').textContent=label;
   const mobI=document.getElementById('theme-mob-icon');if(mobI)mobI.className='ti '+icon;
 }
-function toggleTheme(){isDark=!isDark;localStorage.setItem('x4g-theme',isDark?'dark':'light');applyTheme(isDark)}
+function toggleTheme(){isDark=!isDark;localStorage.setItem('Sadra-theme',isDark?'dark':'light');applyTheme(isDark)}
 applyTheme(isDark);
 function toast(msg,type=''){
   const t=document.getElementById('toast');
@@ -1256,7 +1273,7 @@ async function fetchStats(){
     document.getElementById('m-subs').textContent=d.subs_count??'—';
     document.getElementById('errs-badge').textContent=d.total_errors+' خطا';
     document.getElementById('uptime-inline').textContent=d.uptime;
-    document.getElementById('uptime-badge').textContent='Luffy Engine · '+d.uptime;
+    document.getElementById('uptime-badge').textContent='Sadra Engine · '+d.uptime;
     document.getElementById('last-upd').textContent='آخرین بروزرسانی: '+new Date().toLocaleTimeString('fa-IR');
     document.getElementById('conns-live').innerHTML='<span class="dot dg pulse"></span> '+d.active_connections+' اتصال';
     renderErrs(d.recent_errors||[]);
@@ -1315,7 +1332,8 @@ async function loadLinks(){
         <div class="cfg-label">${esc(l.label)}</div>
         <div class="cfg-sub-meta">
           <span class="cfg-uuid-mini" onclick="navigator.clipboard.writeText('${l.uuid}').then(()=>toast('UUID کپی شد','ok'))" title="${l.uuid}"><i class="ti ti-fingerprint"></i> ${l.uuid.slice(0,10)}…</span>
-          <span>${new Date(l.created_at).toLocaleDateString('fa-IR')}</span>
+        <span>${new Date(l.created_at).toLocaleDateString('fa-IR')}</span>
+        ${l.connected_ips > 0 ? `<span style="color:var(--green-t);font-weight:700;background:var(--green-bg);padding:2px 6px;border-radius:4px"><i class="ti ti-users"></i> ${l.connected_ips} متصل</span>` : `<span style="color:var(--t3);"><i class="ti ti-users"></i> ۰ متصل</span>`}
         </div>
       </div>
       <div class="cfg-divider-v"></div>
@@ -1328,6 +1346,7 @@ async function loadLinks(){
       <div class="cfg-divider-v"></div>
       <div class="cfg-badges-col">
         ${protoBadge(l.protocol)}
+        ${l.usage_type === 'download' ? '<span class="cfg-sub-tag" style="color:var(--purple-t);background:var(--purple-bg);padding:2px 6px;border-radius:4px"><i class="ti ti-download"></i> دانلود</span>' : '<span class="cfg-sub-tag" style="color:var(--green-t);background:var(--green-bg);padding:2px 6px;border-radius:4px"><i class="ti ti-world"></i> وب‌گردی</span>'}
         <span class="cfg-sub-tag" title="پورت اتصال"><i class="ti ti-route"></i> :${l.port||443}</span>
         ${l.address ? `<span class="cfg-sub-tag" title="آدرس اختصاصی"><i class="ti ti-world"></i> ${esc(l.address)}</span>` : ''}
         ${l.sub_id&&allSubsList.find(s=>s.sub_id===l.sub_id)?`<span class="cfg-sub-tag"><i class="ti ti-folder"></i> ${esc(allSubsList.find(s=>s.sub_id===l.sub_id).name)}</span>`:''}
@@ -1363,8 +1382,9 @@ async function createLink(){
   const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
   const speed_limit_unit=document.getElementById('nl-speed-unit').value;
   const address=document.getElementById('nl-address').value.trim();
+  const usage_type=document.getElementById('nl-usage').value;
   try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,sub_id,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address})});
+    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,sub_id,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,usage_type})});
     if(!r.ok)throw new Error('failed');
     ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-address'].forEach(id=>document.getElementById(id).value='');
     toast('کانفیگ ساخته شد ✓','ok');loadLinks();
@@ -1384,6 +1404,7 @@ function openEditLink(uuid){
   document.getElementById('el-port').value=l.port||443;
   document.getElementById('el-iplimit').value=l.ip_limit||0;
   document.getElementById('el-address').value=l.address||'';
+  document.getElementById('el-usage').value=l.usage_type||'web';
   if(!l.speed_limit_bytes){document.getElementById('el-speed').value='0';document.getElementById('el-speed-unit').value='MBIT';}
   else{document.getElementById('el-speed').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-speed-unit').value='MBIT';}
   openModal('modal-edit-link');
@@ -1402,7 +1423,8 @@ async function saveEditLink(){
   const speed_limit_value=Number(document.getElementById('el-speed').value)||0;
   const speed_limit_unit=document.getElementById('el-speed-unit').value;
   const address=document.getElementById('el-address').value.trim();
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address};
+  const usage_type=document.getElementById('el-usage').value;
+  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,usage_type};
   if(exp&&Number(exp)>0)body.expires_days=Number(exp);
   try{
     const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1752,6 +1774,26 @@ async function downloadFromCf() {
   } catch(e) { toast('خطا در برقراری ارتباط', 'err'); }
 }
 
+async function uploadToCf() {
+  toast('در حال آپلود اطلاعات...', 'info');
+  try {
+    const r = await authF('/api/cf-sync/upload', {method: 'POST'});
+    if(r.ok) toast('اطلاعات با موفقیت در کلودفلر آپلود شد ✓', 'ok');
+    else throw new Error();
+  } catch(e) { toast('خطا در آپلود اطلاعات', 'err'); }
+}
+
+async function downloadFromCf() {
+  toast('در حال دریافت اطلاعات...', 'info');
+  try {
+    const r = await authF('/api/cf-sync/download', {method: 'POST'});
+    if(r.ok) {
+      toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
+      setTimeout(() => location.reload(), 1500);
+    } else throw new Error();
+  } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
+}
+
 document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
@@ -1773,7 +1815,7 @@ PUBLIC_HTML = """<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>X4G Sub</title>
+<title>Sadra Sub</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -1919,18 +1961,18 @@ html,body{min-height:100%;background:var(--bg);font-family:var(--serif);color:va
     </div>
   </div>
   <div id="root"><div class="empty-state">در حال بارگذاری...</div></div>
-  <div class="footer">X4G v9.5 Sadra Engine</div>
+  <div class="footer">Sadra v9.5 Sadra Engine</div>
 </div>
 <script>
 const UUID_KEY='__UUID_KEY__';
 let savedPw='';
 
-let isDark=localStorage.getItem('x4g-pub-theme')!=='light';
+let isDark=localStorage.getItem('Sadra-pub-theme')!=='light';
 function applyTheme(dark){
   document.documentElement.setAttribute('data-theme',dark?'dark':'light');
   document.getElementById('theme-icon').className='ti '+(dark?'ti-sun':'ti-moon');
 }
-function toggleTheme(){isDark=!isDark;localStorage.setItem('x4g-pub-theme',isDark?'dark':'light');applyTheme(isDark)}
+function toggleTheme(){isDark=!isDark;localStorage.setItem('Sadra-pub-theme',isDark?'dark':'light');applyTheme(isDark)}
 applyTheme(isDark);
 
 function toast(msg){
@@ -1989,8 +2031,8 @@ function renderContent(d){
   const baseSubUrl = d.sub_url || (window.location.protocol + '//' + window.location.host + '/sub-group/' + UUID_KEY);
   const subUrl = baseSubUrl + (savedPw ? '?pw=' + encodeURIComponent(savedPw) : '');
 
-  window._x4gSubUrl  = subUrl;
-  window._x4gLinks   = d.links.map(l => ({vless: l.vless_link, label: l.label}));
+  window._SadraSubUrl  = subUrl;
+  window._SadraLinks   = d.links.map(l => ({vless: l.vless_link, label: l.label}));
 
   document.getElementById('root').innerHTML=`
     <div class="sub-info">
@@ -1999,8 +2041,8 @@ function renderContent(d){
       ${d.desc ? `<div class="sub-desc">${esc(d.desc)}</div>` : ''}
       <div class="sub-sub-box">
         <span class="sub-sub-url">${esc(subUrl)}</span>
-        <button class="btn btn-g" style="padding:7px 12px;font-size:10.5px" onclick="navigator.clipboard.writeText(window._x4gSubUrl).then(()=>toast('کپی شد ✓'))">کپی لینک ساب</button>
-        <button class="btn btn-o" style="padding:7px 12px;font-size:10.5px" onclick="showQR('${esc(d.name)}', window._x4gSubUrl)">QR</button>
+        <button class="btn btn-g" style="padding:7px 12px;font-size:10.5px" onclick="navigator.clipboard.writeText(window._SadraSubUrl).then(()=>toast('کپی شد ✓'))">کپی لینک ساب</button>
+        <button class="btn btn-o" style="padding:7px 12px;font-size:10.5px" onclick="showQR('${esc(d.name)}', window._SadraSubUrl)">QR</button>
       </div>
     </div>
 
@@ -2056,8 +2098,8 @@ function renderContent(d){
                 <div class="cfg-vless-inner"><div class="cfg-vless">${esc(l.vless_link)}</div></div>
               </div>
               <div class="cfg-actions">
-                <button class="btn btn-p" onclick="navigator.clipboard.writeText(window._x4gLinks[${i}].vless).then(()=>toast('کپی شد ✓'))"><i class="ti ti-copy"></i> کپی</button>
-                <button class="btn btn-g" onclick="showQR(window._x4gLinks[${i}].label, window._x4gLinks[${i}].vless)"><i class="ti ti-qrcode"></i> QR</button>
+                <button class="btn btn-p" onclick="navigator.clipboard.writeText(window._SadraLinks[${i}].vless).then(()=>toast('کپی شد ✓'))"><i class="ti ti-copy"></i> کپی</button>
+                <button class="btn btn-g" onclick="showQR(window._SadraLinks[${i}].label, window._SadraLinks[${i}].vless)"><i class="ti ti-qrcode"></i> QR</button>
               </div>
             </div>
           </div>
@@ -2068,7 +2110,7 @@ function renderContent(d){
 }
 
 function copyAllConfigs(){
-  const text=window._x4gLinks.map(l=>l.vless).join('\n');
+  const text=window._SadraLinks.map(l=>l.vless).join('\n');
   navigator.clipboard.writeText(text).then(()=>toast('همه‌ی کانفیگ‌ها کپی شد ✓'));
 }
 
@@ -2098,11 +2140,11 @@ def get_public_page_html(uuid_key: str) -> str:
 
 IRAN_TZ = ZoneInfo("Asia/Tehran")
 
-app = FastAPI(title="Luffy-X4G", docs_url=None, redoc_url=None)
+app = FastAPI(title="Sadra-Sadra", docs_url=None, redoc_url=None)
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
-DATA_FILE = DATA_DIR / "luffy_x4g_state.json"
-SECRET_FILE = DATA_DIR / "luffy_x4g_secret.key"
+DATA_FILE = DATA_DIR / "Sadra_Sadra_state.json"
+SECRET_FILE = DATA_DIR / "Sadra_Sadra_secret.key"
 SAVE_LOCK = asyncio.Lock()
 
 def _load_or_create_secret() -> str:
@@ -2133,6 +2175,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 # ── State Management ──────────────────────────────────────────────────────────
 # ── Cloudflare KV Config (Smart & Dynamic) ──────────────────────────────────
 CF_SYNC_CONFIG = {
+    # اگر فایل تنظیمات خام باشد، از این مقادیر پیش‌فرض استفاده می‌کند
     "worker_url": os.environ.get("DEFAULT_KV_URL", "https://da-base.ali1-personal.workers.dev"),
     "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
@@ -2172,7 +2215,7 @@ LAST_TS = 0.0
 
 async def sync_with_cf(skip_structure=False, force_pull=False):
     global LAST_MODIFIED, LAST_TS, AUTH, CONFIG, CF_SYNC_CONFIG
-    raw = await get_cf_kv("luffy_x4g_state")
+    raw = await get_cf_kv("Sadra_Sadra_state")
     if not raw: return
     
     try:
@@ -2190,6 +2233,7 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
     else:
         is_newer = remote_time > LAST_MODIFIED
 
+    # قفل ایمنی: اگر سرور ما خام است (صفر یا ۱ کانفیگ دارد) اما کلودفلر پر است، همیشه کلودفلر برنده است!
     remote_link_count = len(remote.get("links", {}))
     if remote_link_count > 1 and len(LINKS) <= 1:
         force_pull = True
@@ -2197,10 +2241,12 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
     async with LINKS_LOCK:
         remote_links = remote.get("links", {})
         
+        # 1. همیشه مصرف ترافیک را ترکیب کن (اولویت با عدد بزرگتر)
         for uid, r_link in remote_links.items():
             if uid in LINKS:
                 LINKS[uid]["used_bytes"] = max(LINKS[uid].get("used_bytes", 0), r_link.get("used_bytes", 0))
         
+        # 2. در صورتی که ساختار تغییر کرده یا دستور اجباری داریم، اطلاعات جدید را بگیر
         if (is_newer or force_pull) and not skip_structure:
             for uid in list(LINKS.keys()):
                 if uid not in remote_links: del LINKS[uid]
@@ -2268,12 +2314,7 @@ async def save_state(mutate=False):
 
 # ── In-memory state ───────────────────────────────────────────────────────────
 connections: dict = {}
-stats = {
-    "total_bytes": 0,
-    "total_requests": 0,
-    "total_errors": 0,
-    "start_time": time.time(),
-}
+stats = {"total_bytes": 0, "total_requests": 0, "total_errors": 0, "start_time": time.time()}
 error_logs: deque = deque(maxlen=50)
 activity_logs: deque = deque(maxlen=200)
 hourly_traffic: dict = defaultdict(int)
@@ -2285,34 +2326,20 @@ SUBS_LOCK = asyncio.Lock()
 XHTTP_LOCK = asyncio.Lock()
 SESSIONS_LOCK = asyncio.Lock()
 
-# اضافه شدن پروتکل‌های جدید
 PROTOCOLS = ("vless-ws", "xhttp-packet-up", "xhttp-stream-up", "httpupgrade", "xhttp-reality")
 DEFAULT_PROTOCOL = "vless-ws"
-
 FINGERPRINTS = ("chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized")
 DEFAULT_FINGERPRINT = "chrome"
-
-DEFAULT_ALPN_BY_PROTOCOL = {
-    "vless-ws": "http/1.1",
-    "httpupgrade": "http/1.1",
-    "xhttp-packet-up": "h2,http/1.1",
-    "xhttp-stream-up": "h2,http/1.1",
-    "xhttp-reality": "h2,http/1.1",
-}
+DEFAULT_ALPN_BY_PROTOCOL = {"vless-ws": "http/1.1", "httpupgrade": "http/1.1", "xhttp-packet-up": "h2,http/1.1", "xhttp-stream-up": "h2,http/1.1", "xhttp-reality": "h2,http/1.1"}
 DEFAULT_PORT = 443
 MIN_PORT, MAX_PORT = 1, 65535
 DEFAULT_SPEED_LIMIT = 0
 
 def log_activity(kind: str, message: str, level: str = "info"):
-    activity_logs.append({
-        "kind": kind,
-        "level": level,
-        "message": message,
-        "time": datetime.now().isoformat(),
-    })
+    activity_logs.append({"kind": kind, "level": level, "message": message, "time": datetime.now().isoformat()})
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
-SESSION_COOKIE = "luffy_session"
+SESSION_COOKIE = "Sadra_session"
 SESSION_TTL = 60 * 60 * 24 * 365
 
 def hash_password(pw: str) -> str:
@@ -2358,15 +2385,15 @@ async def startup():
     timeout = httpx.Timeout(30.0, connect=10.0)
     http_client = httpx.AsyncClient(limits=limits, timeout=timeout, follow_redirects=True)
     await load_state()
-    log_activity("system", "سرور X4G-Luffy راه‌اندازی شد", "ok")
+    log_activity("system", "سرور Sadra-Sadra راه‌اندازی شد", "ok")
 
 @app.on_event("shutdown")
 async def shutdown():
-    await save_state()
+    await save_state(mutate=True)
     if http_client:
         await http_client.aclose()
 
-# ── Helpers & IP Detection (Luffy Advanced Logic) ─────────────────────────────
+# ── Helpers & IP Detection (Sadra Advanced Logic) ─────────────────────────────
 def get_host(request: Request | None = None) -> str:
     if request is not None:
         h = request.headers.get("x-forwarded-host") or request.headers.get("host")
@@ -2446,8 +2473,8 @@ def is_link_allowed(link: dict | None) -> bool:
 # ── Link Generation ───────────────────────────────────────────────────────────
 def generate_vless_link(
     uuid: str,
-    host: str,
-    remark: str = "X4G",
+    host: str,  # این متغیر به صورت خودکار دامنه همان سروری که باز کردید را می‌گیرد
+    remark: str = "Sadra",
     protocol: str = DEFAULT_PROTOCOL,
     fingerprint: str | None = None,
     alpn: str | None = None,
@@ -2458,16 +2485,18 @@ def generate_vless_link(
     alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
     port_val = port or DEFAULT_PORT
     
-    # استفاده از آدرس دستی اگر وارد شده بود
+    # اگر در پنل آدرس دستی نداده باشید، دقیقاً دامنه‌ی فعلی (رندر یا ریل‌وی) را جایگزین می‌کند
     target_addr = address.strip() if address and address.strip() else host
+    sni_val = host
+    host_val = host
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "ws", "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "ws", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
     
     elif protocol == "httpupgrade":
         path = f"/upgrade/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
     
     elif protocol == "xhttp-reality":
         path = f"/xhttp/reality/{uuid}"
@@ -2476,9 +2505,9 @@ def generate_vless_link(
             "security": "reality",
             "type": "xhttp",
             "mode": "auto",
-            "host": host,
+            "host": host_val,
             "path": path,
-            "sni": host,
+            "sni": sni_val,
             "fp": fp,
             "pbk": "Z2V6uOrJEwdR4WefmJJm03JLocLztknxETJMaQTO9DM",
             "sid": uuid[:8],
@@ -2490,7 +2519,7 @@ def generate_vless_link(
         # xhttp-packet-up / xhttp-stream-up
         mode = protocol.replace("xhttp-", "")
         path = f"/xhttp-siz10/{mode}/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host, "path": path, "sni": host, "fp": fp, "alpn": alpn_val}
+        params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
 
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"vless://{uuid}@{target_addr}:{port_val}?{query}#{quote(remark)}"
@@ -2499,7 +2528,7 @@ def vless_link_for_link(link: dict, uid: str, host: str) -> str:
     proto = link.get("protocol", DEFAULT_PROTOCOL)
     return generate_vless_link(
         uid, host,
-        remark=f"Luffy-{link.get('label','')}",
+        remark=f"Sadra-{link.get('label','')}",
         protocol=proto,
         fingerprint=link.get("fingerprint"),
         alpn=link.get("alpn"),
@@ -2556,8 +2585,9 @@ async def ensure_default_link():
                     "ip_limit": 0,
                     "speed_limit_bytes": 0,
                     "address": "",
+                    "usage_type": "web",
                 }
-                asyncio.create_task(save_state())
+                asyncio.create_task(save_state(mutate=True))
 
 # ── API Endpoints ─────────────────────────────────────────────────────────────
 @app.post("/api/cf-sync/upload")
@@ -2573,7 +2603,7 @@ async def manual_cf_upload(_=Depends(require_auth)):
         "saved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
     raw_data = json.dumps(data, ensure_ascii=False, indent=2)
-    success = await put_cf_kv("luffy_x4g_state", raw_data)
+    success = await put_cf_kv("Sadra_Sadra_state", raw_data)
     if success: return {"ok": True}
     raise HTTPException(status_code=500, detail="upload failed")
 
@@ -2602,6 +2632,7 @@ async def test_cloudflare():
     try:
         put_resp = await http_client.put(endpoint, content="ok", headers={"X-Custom-Auth": token})
         if put_resp.status_code != 200:
+            # این خط مچ سرور را می‌گیرد و رمز ارسالی را فاش می‌کند!
             return {"error": f"ارور 401: پنل شما دقیقاً در حال ارسال این توکن است: «{token}». آیا این توکن درست است؟"}
             
         get_resp = await http_client.get(endpoint, headers={"X-Custom-Auth": token})
@@ -2631,7 +2662,7 @@ async def update_cf_sync_settings(request: Request, _=Depends(require_auth)):
 
 @app.get("/")
 async def root():
-    return {"service": "Luffy X4G", "version": "9.5", "status": "active"}
+    return {"service": "Sadra Sadra", "version": "9.5", "status": "active"}
 
 @app.post("/api/login")
 async def api_login(request: Request):
@@ -2669,7 +2700,7 @@ async def api_change_password(request: Request, token=Depends(require_auth)):
     async with SESSIONS_LOCK:
         SESSIONS.clear()
         SESSIONS[token] = time.time() + SESSION_TTL
-    await save_state()
+    await save_state(mutate=True)
     log_activity("auth", "رمز عبور پنل تغییر کرد", "ok")
     return {"ok": True}
 
@@ -2748,6 +2779,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
 
     uid = generate_uuid()
     address = (body.get("address") or "").strip()
+    usage_type = body.get("usage_type") or "web"
 
     async with LINKS_LOCK:
         LINKS[uid] = {
@@ -2766,7 +2798,8 @@ async def create_link(request: Request, _=Depends(require_auth)):
             "port": port,
             "ip_limit": ip_limit,
             "speed_limit_bytes": speed_limit_bytes,
-            "address": address
+            "address": address,
+            "usage_type": usage_type
         }
     
     sub_id = body.get("sub_id")
@@ -2776,7 +2809,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
                 ids = SUBS[sub_id].setdefault("link_ids", [])
                 if uid not in ids: ids.append(uid)
                 
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
     
     host = get_host(request)
@@ -2814,6 +2847,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         if "label" in body: link["label"] = str(body["label"])[:60]
         if "note" in body: link["note"] = str(body["note"])[:200]
         if "address" in body: link["address"] = str(body["address"]).strip()
+        if "usage_type" in body: link["usage_type"] = str(body["usage_type"]).strip()
         if "reset_usage" in body and body["reset_usage"]:
             link["used_bytes"] = 0
             log_activity("link", f"مصرف کانفیگ «{link['label']}» ریست شد", "info")
@@ -2844,7 +2878,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
             if new_sub and new_sub in SUBS:
                 if uid not in SUBS[new_sub].setdefault("link_ids", []): SUBS[new_sub]["link_ids"].append(uid)
 
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
 @app.delete("/api/links/{uid}")
@@ -2858,7 +2892,7 @@ async def delete_link(uid: str, _=Depends(require_auth)):
         async with SUBS_LOCK:
             if sub_id in SUBS and uid in SUBS[sub_id].get("link_ids", []):
                 SUBS[sub_id]["link_ids"].remove(uid)
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{label}» حذف شد", "err")
     return {"ok": True}
 
@@ -2873,7 +2907,7 @@ async def create_sub(request: Request, _=Depends(require_auth)):
     uuid_key = secrets.token_urlsafe(16)
     async with SUBS_LOCK:
         SUBS[sub_id] = {"name": name, "desc": desc, "password_hash": hash_password(password) if password else None, "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), "link_ids": []}
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» ساخته شد", "ok")
     host = get_host(request)
     return {"sub_id": sub_id, **SUBS[sub_id], "public_url": f"https://{host}/p/{uuid_key}", "sub_url": f"https://{host}/sub-group/{uuid_key}"}
@@ -2903,7 +2937,7 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
         if sub_id not in SUBS: raise HTTPException(status_code=404)
         s = SUBS[sub_id]
         if "link_ids" in body: s["link_ids"] = list(body["link_ids"])
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
 @app.delete("/api/subs/{sub_id}")
@@ -2915,7 +2949,7 @@ async def delete_sub(sub_id: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
         for link in LINKS.values():
             if link.get("sub_id") == sub_id: link["sub_id"] = None
-    asyncio.create_task(save_state())
+    asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» حذف شد", "warn")
     return {"ok": True}
 
@@ -2991,15 +3025,34 @@ async def throttle(uuid: str, nbytes: int):
 
 def reset_bucket(uuid: str): _buckets.pop(uuid, None)
 
-# ── WS / HTTPUpgrade Core Tunnels ─────────────────────────────────────────────
 # ── Speed & Traffic Optimizer ─────────────────────────────────────────────────
 current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
 
 async def update_time_loop():
-    """آپدیت زمان در پس‌زمینه (جلوگیری از محاسبه زمان به ازای هر کیلوبایت ترافیک)"""
+    """آپدیت زمان و پاکسازی خودکار کانکشن‌های مرده (Ghost Connections)"""
     global current_hour_str
     while True:
         current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
+        
+        # پیدا کردن آی‌پی‌هایی که قطع شده‌اند اما در لیست مانده‌اند
+        dead_conns = []
+        for cid, cinfo in list(connections.items()):
+            current_bytes = cinfo.get("bytes", 0)
+            last_bytes = cinfo.get("last_bytes_check", 0)
+            
+            if current_bytes > last_bytes:
+                cinfo["last_bytes_check"] = current_bytes
+                cinfo["idle_minutes"] = 0
+            else:
+                cinfo["idle_minutes"] = cinfo.get("idle_minutes", 0) + 1
+                
+            if cinfo["idle_minutes"] >= 3:
+                dead_conns.append(cid)
+                
+        # حذف اتصالات مرده از پنل
+        for cid in dead_conns:
+            connections.pop(cid, None)
+            
         await asyncio.sleep(60)
 
 @app.on_event("startup")
@@ -3007,14 +3060,37 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
-RELAY_BUF = 65536  # کاهش به 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
 
-def _tune_socket(writer: asyncio.StreamWriter):
-    """تنظیمات سوکت برای کاهش پینگ و جلوگیری از تاخیر بسته‌ها (TCP_NODELAY)"""
+def get_buffer_config(uid: str):
+    """انتخاب داینامیک سایز بافر بر اساس نوع مصرف کانفیگ"""
+    link = LINKS.get(uid, {})
+    usage = link.get("usage_type", "web")
+    if usage == "download":
+        return {
+            "relay_buf": 262144,      # 256KB Buffer
+            "flush_thresh": 1048576,  # 1MB Traffic Update
+            "sock_buf": 4194304,      # 4MB TCP Window (Max Speed)
+            "q_size": 4096            # XHTTP Queue
+        }
+    else: # web
+        return {
+            "relay_buf": 65536,       # 64KB Buffer (Low Latency)
+            "flush_thresh": 262144,   # 256KB Traffic Update
+            "sock_buf": 0,            # OS Default (Smooth stream)
+            "q_size": 1024            # XHTTP Queue
+        }
+
+def _tune_socket(writer: asyncio.StreamWriter, sock_buf: int = 0):
+    """تنظیمات سوکت داینامیک بر اساس نیاز"""
     try:
         sock = writer.transport.get_extra_info("socket")
         if sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            if sock_buf > 0:
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, sock_buf)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sock_buf)
+            if hasattr(socket, "TCP_QUICKACK"):
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_QUICKACK, 1)
     except Exception:
         pass
 
@@ -3041,6 +3117,7 @@ async def check_and_use(uid: str, n: int) -> bool:
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):
     conn_info = connections.get(conn_id)
+    buf_cfg = get_buffer_config(uid)
     local_bytes = 0
     try:
         while True:
@@ -3052,8 +3129,7 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            # ثبت ترافیک هر 256KB برای واکنش‌گرایی سریع‌تر (بدون فشار به CPU)
-            if local_bytes >= 262144: 
+            if local_bytes >= buf_cfg["flush_thresh"]: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3066,8 +3142,7 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            # درین کردنِ زودهنگام روی 64KB تا جریان آپلود پیوسته (Smooth) بماند
-            if writer.transport.get_write_buffer_size() > 65536: 
+            if writer.transport.get_write_buffer_size() > buf_cfg["flush_thresh"]: 
                 await writer.drain()
     except Exception: pass
     finally:
@@ -3080,16 +3155,17 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
 async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: str, uid: str):
     first = True
     conn_info = connections.get(conn_id)
+    buf_cfg = get_buffer_config(uid)
     local_bytes = 0
     try:
         while True:
-            data = await reader.read(65536) # خواندن نرم و پیوسته
+            data = await reader.read(buf_cfg["relay_buf"])
             if not data: break
             
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= 262144: 
+            if local_bytes >= buf_cfg["flush_thresh"]: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3102,9 +3178,8 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
             
-            # خط جادویی: اجازه می‌دهد رویدادهای زنده نگه‌داشتنِ WebSocket (مثل PING/PONG)
-            # نفس بکشند و از گیر کردنِ ویدیوهای یوتیوب (Bufferbloat) کاملاً جلوگیری شود.
-            await asyncio.sleep(0)
+            if buf_cfg["sock_buf"] == 0:
+                await asyncio.sleep(0)
             
     except Exception: pass
     finally:
@@ -3137,13 +3212,12 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         
         command, address, port, payload = await parse_vless_header(first_chunk)
         
-        # ثبت ترافیک پکتِ اولیه
         await check_and_use(uuid, len(first_chunk))
         connections[conn_id]["bytes"] += len(first_chunk)
         
         reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
         
-        _tune_socket(writer)
+        _tune_socket(writer, get_buffer_config(uuid)["sock_buf"])
         
         if payload:
             writer.write(payload)
@@ -3161,14 +3235,15 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
             try: writer.close()
             except: pass
         connections.pop(conn_id, None)
+
 # ── XHTTP Core Tunnels (Ultra Optimized) ──────────────────────────────────────
 router = APIRouter()
 xhttp_sessions: dict = {}
 
-async def _open_tcp_from_header(first_chunk: bytes):
+async def _open_tcp_from_header(first_chunk: bytes, uid: str):
     command, address, port, payload = await parse_vless_header(first_chunk)
     reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
-    _tune_socket(writer)
+    _tune_socket(writer, get_buffer_config(uid)["sock_buf"])
     if payload:
         writer.write(payload)
         await writer.drain()
@@ -3192,21 +3267,31 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     first = True
     sess = xhttp_sessions.get(session_id)
     conn_info = connections.get(sess["conn_id"]) if sess else None
+    local_bytes = 0
+    buf_cfg = get_buffer_config(uuid)
     try:
         while True:
-            data = await reader.read(RELAY_BUF) # استفاده از بافر 64KB
+            data = await reader.read(buf_cfg["relay_buf"])
             if not data: break
-            if not await check_and_use(uuid, len(data)): break
+            
+            size = len(data)
+            local_bytes += size
+            if local_bytes >= buf_cfg["flush_thresh"]:
+                if not await check_and_use(uuid, local_bytes): break
+                if conn_info: conn_info["bytes"] += local_bytes
+                local_bytes = 0
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(len(data))
+                if rate > 0: await _get_bucket(uuid, rate).consume(size)
                 
-            if conn_info: conn_info["bytes"] += len(data)
             await down_q.put((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
     finally:
+        if local_bytes > 0:
+            await check_and_use(uuid, local_bytes)
+            if conn_info: conn_info["bytes"] += local_bytes
         await _teardown_xhttp(session_id)
 
 async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -> dict:
@@ -3216,19 +3301,20 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
-        # افزایش ظرفیت صف برای جلوگیری از Drop شدن پکت‌های ویدیو
-        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=1024), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
+        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=get_buffer_config(uuid)["q_size"]), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
         xhttp_sessions[session_id] = sess
         return sess
 
-def _downstream_gen(sess: dict):
+def _downstream_gen(sess: dict, session_id: str):
     async def gen():
         try:
             while True:
                 chunk = await sess["down_q"].get()
                 if chunk is None: break
                 yield chunk
-        finally: pass
+        finally: 
+            # حذف سریع و فوری کانکشن به محض بستن کلاینت
+            asyncio.create_task(_teardown_xhttp(session_id))
     return gen()
 
 @router.get("/xhttp-siz10/{mode}/{uuid}/{session_id}")
@@ -3237,7 +3323,7 @@ async def xhttp_downlink(uuid: str, session_id: str, request: Request, mode: str
     ip = client_ip(request)
     sess = await _get_or_create_xhttp(uuid, mode, session_id, ip)
     if sess.get("closed"): raise HTTPException(status_code=404)
-    return StreamingResponse(_downstream_gen(sess), media_type="application/octet-stream")
+    return StreamingResponse(_downstream_gen(sess, session_id), media_type="application/octet-stream")
 
 @router.post("/xhttp-siz10/packet-up/{uuid}/{session_id}/{seq}")
 async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Request):
@@ -3260,7 +3346,7 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
         if sess["writer"] is None:
             if seq != 0:
                 sess["seq_buf"][seq] = body; return {"ok": True}
-            reader, writer = await _open_tcp_from_header(body)
+            reader, writer = await _open_tcp_from_header(body, uuid)
             sess["writer"] = writer
             sess["downlink_task"] = asyncio.create_task(_pump_tcp_to_queue(session_id, uuid, reader, sess["down_q"]))
             sess["next_seq"] = 1
@@ -3289,32 +3375,44 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
     if sess.get("closed"): raise HTTPException(status_code=404)
     
     conn_info = connections.get(sess["conn_id"])
+    local_bytes = 0
+    buf_cfg = get_buffer_config(uuid)
+    
     try:
         async for chunk in request.stream():
             if not chunk: continue
-            if not await check_and_use(uuid, len(chunk)): raise HTTPException(status_code=403)
+            size = len(chunk)
+            local_bytes += size
+            
+            if local_bytes >= buf_cfg["flush_thresh"]:
+                if not await check_and_use(uuid, local_bytes): raise HTTPException(status_code=403)
+                if conn_info: conn_info["bytes"] += local_bytes
+                local_bytes = 0
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(len(chunk))
-                
-            if conn_info: conn_info["bytes"] += len(chunk)
+                if rate > 0: await _get_bucket(uuid, rate).consume(size)
 
             if sess["writer"] is None:
-                reader, writer = await _open_tcp_from_header(chunk)
+                reader, writer = await _open_tcp_from_header(chunk, uuid)
                 sess["writer"] = writer
                 sess["downlink_task"] = asyncio.create_task(_pump_tcp_to_queue(session_id, uuid, reader, sess["down_q"]))
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > 524288:
+            if sess["writer"].transport.get_write_buffer_size() > buf_cfg["flush_thresh"]:
                 await sess["writer"].drain()
     except Exception:
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=502)
+    finally:
+        if local_bytes > 0:
+            await check_and_use(uuid, local_bytes)
+            if conn_info: conn_info["bytes"] += local_bytes
     return {"ok": True}
 
 app.include_router(router)
+
 # ── GUI Routes ────────────────────────────────────────────────────────────────
 @app.get("/p/{uuid_key}", response_class=HTMLResponse)
 async def public_sub_page(uuid_key: str, request: Request):

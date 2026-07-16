@@ -639,6 +639,9 @@ a{color:inherit;text-decoration:none}
   .main{padding:62px 12px 50px}
   .sub-grid,.cfg-grid,.conn-grid{grid-template-columns:1fr}
 }
+.lrow-v2.half-checked {background:var(--accent-d)}
+.lrow-v2.half-checked .lrow-v2-check {background:var(--accent-d);border-color:var(--accent)}
+.lrow-v2.half-checked .lrow-v2-check i {opacity:1;transform:scale(1);color:var(--accent)}
 </style>
 </head>
 <body>
@@ -698,6 +701,10 @@ a{color:inherit;text-decoration:none}
         <label><i class="ti ti-align-left"></i> توضیحات (اختیاری)</label>
         <input class="modal-v2-input" id="ns-desc" placeholder="توضیح کوتاه درباره این گروه">
       </div>
+      <div class="modal-v2-field">
+        <label><i class="ti ti-world"></i> دامنه لینک ساب (اختیاری)</label>
+        <input class="modal-v2-input" id="ns-domain" placeholder="مثلاً: https://sub.domain.com">
+      </div>
       <div class="modal-v2-field" style="margin-bottom:0">
         <label><i class="ti ti-lock"></i> رمز صفحه پابلیک (اختیاری)</label>
         <input class="modal-v2-input" id="ns-pw" type="password" placeholder="خالی بگذارید = بدون رمز">
@@ -716,6 +723,7 @@ a{color:inherit;text-decoration:none}
     <div class="modal-title"><i class="ti ti-edit"></i> ویرایش کانفیگ</div>
     <input type="hidden" id="el-uuid">
     <div class="fg" style="margin-bottom:13px"><label>عنوان</label><input class="fi" id="el-label" style="width:100%"></div>
+    <div class="fg" style="margin-bottom:13px"><label>دامنه لینک ساب (اختیاری)</label><input class="fi" id="el-sub-domain" placeholder="مثلاً https://sub.domain.com" style="width:100%"></div>
     
     <div class="fg" style="margin-bottom:13px">
       <label>کانفیگ‌های کاستوم (CDN / IP)</label>
@@ -861,6 +869,9 @@ a{color:inherit;text-decoration:none}
           <input class="cp-input-full" id="nl-label" placeholder="مثلاً: کاربر علی">
           <div class="cp-mini-row">
             <input class="cp-input-full" id="nl-note" placeholder="یادداشت (اختیاری)">
+          </div>
+          <div class="cp-mini-row" style="margin-top:8px">
+            <input class="cp-input-full" id="nl-sub-domain" placeholder="دامنه لینک ساب (اختیاری)">
           </div>
         </div>
         <div class="cp-block">
@@ -1363,6 +1374,7 @@ async function createLink(){
   const unit=document.getElementById('nl-unit').value;
   const exp=document.getElementById('nl-exp').value;
   const note=document.getElementById('nl-note').value.trim();
+  const sub_domain=document.getElementById('nl-sub-domain').value.trim();
   const protocol=document.getElementById('nl-proto').value||'vless-ws';
   const fingerprint=document.getElementById('nl-fp').value||'chrome';
   const alpn=document.getElementById('nl-alpn').value.trim();
@@ -1373,9 +1385,9 @@ async function createLink(){
   const customs=getCustomFields('nl');
 
   try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs})});
+    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain})});
     if(!r.ok)throw new Error('failed');
-    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn'].forEach(id=>document.getElementById(id).value='');
+    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-sub-domain'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('nl-customs-list').innerHTML='';
     toast('کانفیگ ساخته شد ✓','ok');loadLinks();
   }catch(e){toast('خطا در ساخت','err')}
@@ -1386,6 +1398,7 @@ function openEditLink(uuid){
   document.getElementById('el-uuid').value=uuid;
   document.getElementById('el-label').value=l.label;
   document.getElementById('el-note').value=l.note||'';
+  document.getElementById('el-sub-domain').value=l.custom_domain||'';
   if(l.limit_bytes===0){document.getElementById('el-val').value='';document.getElementById('el-unit').value='GB';}
   else{document.getElementById('el-val').value=(l.limit_bytes/1024/1024).toFixed(0);document.getElementById('el-unit').value='MB';}
   document.getElementById('el-exp').value='';
@@ -1405,6 +1418,7 @@ async function saveEditLink(){
   const uuid=document.getElementById('el-uuid').value;
   const label=document.getElementById('el-label').value.trim();
   const note=document.getElementById('el-note').value.trim();
+  const sub_domain=document.getElementById('el-sub-domain').value.trim();
   const val=document.getElementById('el-val').value;
   const unit=document.getElementById('el-unit').value;
   const exp=document.getElementById('el-exp').value;
@@ -1416,7 +1430,7 @@ async function saveEditLink(){
   const speed_limit_unit=document.getElementById('el-speed-unit').value;
   const customs=getCustomFields('el');
 
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs};
+  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain};
   if(exp&&Number(exp)>0)body.expires_days=Number(exp);
   try{
     const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1494,11 +1508,12 @@ function filterSubs(q){
 async function createSub(){
   const name=document.getElementById('ns-name').value.trim()||'گروه جدید';
   const desc=document.getElementById('ns-desc').value.trim();
+  const domain=document.getElementById('ns-domain').value.trim();
   const pw=document.getElementById('ns-pw').value;
   try{
-    const r=await authF('/api/subs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,desc,password:pw})});
+    const r=await authF('/api/subs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,desc,password:pw, custom_domain:domain})});
     if(!r.ok)throw new Error('failed');
-    ['ns-name','ns-desc','ns-pw'].forEach(id=>document.getElementById(id).value='');
+    ['ns-name','ns-desc','ns-domain','ns-pw'].forEach(id=>document.getElementById(id).value='');
     closeModal('modal-create-sub');
     toast('گروه ساخته شد ✓','ok');loadSubs();
   }catch(e){toast('خطا در ساخت گروه','err')}
@@ -1508,12 +1523,14 @@ async function deleteSub(sub_id){
   try{const r=await authF('/api/subs/'+sub_id,{method:'DELETE'});if(!r.ok)throw new Error();toast('گروه حذف شد ✓','ok');loadSubs();loadLinks();}catch(e){toast('خطا','err')}
 }
 let lmodalLinks=[], lmodalInSub=new Set(), currentSubId=null;
+let lmodalExpanded = new Set(); 
 
 async function openSubLinks(sub_id,name){
   currentSubId=sub_id;
   document.getElementById('modal-sub-name').textContent=name;
   document.getElementById('modal-links-body').innerHTML='<div style="color:var(--t3);font-size:12px;padding:20px;text-align:center"><i class="ti ti-loader-2" style="animation:spin 1s linear infinite;font-size:20px"></i></div>';
   document.getElementById('lmodal-search-inp').value='';
+  lmodalExpanded.clear(); 
   openModal('modal-links');
   try{
     const [lr,sr]=await Promise.all([authF('/api/links'),authF('/api/subs')]);
@@ -1532,27 +1549,69 @@ function renderLmodalList(links){
   
   let html = '';
   links.forEach(l => {
-      l.variations.forEach(v => {
-          const checked = lmodalInSub.has(v.id);
-          const on = l.active && !l.expired;
-          html += `<div class="lrow-v2 ${checked?'checked':''}" data-name="${esc(l.label).toLowerCase()} ${esc(v.name).toLowerCase()}" onclick="toggleLrow('${v.id}',this)">
-            <div class="lrow-v2-check"><i class="ti ti-check"></i></div>
-            <div class="lrow-v2-info" style="margin-right:8px">
-              <div class="lrow-v2-name">${esc(l.label)} <span style="font-size:9.5px;color:var(--accent);background:rgba(255,215,0,0.15);padding:2px 7px;border-radius:6px;margin-right:6px">${esc(v.name)}</span></div>
+      const selectedCount = l.variations.filter(v => lmodalInSub.has(v.id)).length;
+      const totalCount = l.variations.length;
+      const allSelected = selectedCount === totalCount && totalCount > 0;
+      const someSelected = selectedCount > 0 && selectedCount < totalCount;
+      
+      const parentCheckedClass = allSelected ? 'checked' : (someSelected ? 'half-checked' : '');
+      const isExpanded = lmodalExpanded.has(l.uuid);
+      const chevron = isExpanded ? 'ti-chevron-down' : 'ti-chevron-left';
+      const iconClass = allSelected ? 'ti-check' : (someSelected ? 'ti-minus' : 'ti-check');
+      
+      html += `
+      <div class="lrow-group" data-name="${esc(l.label).toLowerCase()}">
+          <div class="lrow-v2 ${parentCheckedClass}" style="margin-bottom:2px" onclick="toggleParentCheck('${l.uuid}', event)">
+            <div class="lrow-v2-check"><i class="ti ${iconClass}"></i></div>
+            <div class="lrow-v2-info" style="margin-right:8px; flex:1" onclick="toggleParentExpand('${l.uuid}', event)">
+              <div class="lrow-v2-name">${esc(l.label)} <span style="font-size:10px;color:var(--t3);font-weight:normal">(${totalCount} لینک)</span></div>
               <div class="lrow-v2-meta"><i class="ti ti-database" style="font-size:10px"></i> ${fmtB(l.used_bytes)}</div>
             </div>
-            <span class="lrow-v2-status ${on?'on':'off'}">${on?'فعال':'غیرفعال'}</span>
+            <div onclick="toggleParentExpand('${l.uuid}', event)" style="padding:5px;cursor:pointer;color:var(--t3);display:flex;align-items:center"><i class="ti ${chevron}"></i></div>
+          </div>
+          
+          <div id="children-${l.uuid}" style="display:${isExpanded ? 'block' : 'none'}; padding-right:24px; border-right:1px dashed var(--card-b); margin-right:10px; margin-bottom:8px">
+      `;
+      
+      l.variations.forEach(v => {
+          const checked = lmodalInSub.has(v.id);
+          html += `<div class="lrow-v2 ${checked?'checked':''}" style="padding:6px 10px; margin-bottom:2px" onclick="toggleChildCheck('${v.id}')">
+            <div class="lrow-v2-check" style="width:16px;height:16px;border-radius:5px"><i class="ti ti-check" style="font-size:10px"></i></div>
+            <div class="lrow-v2-info" style="margin-right:8px">
+              <div class="lrow-v2-name" style="font-size:11.5px;color:var(--t2)">${esc(v.name)}</div>
+            </div>
           </div>`;
       });
+      html += `</div></div>`;
   });
   body.innerHTML = html;
   updateLmodalCount();
 }
 
-function toggleLrow(vid,el){
-  if(lmodalInSub.has(vid)){lmodalInSub.delete(vid);el.classList.remove('checked')}
-  else{lmodalInSub.add(vid);el.classList.add('checked')}
-  updateLmodalCount();
+function toggleParentExpand(uuid, event) {
+    event.stopPropagation();
+    if(lmodalExpanded.has(uuid)) lmodalExpanded.delete(uuid);
+    else lmodalExpanded.add(uuid);
+    renderLmodalList(lmodalLinks);
+}
+
+function toggleParentCheck(uuid, event) {
+    event.stopPropagation();
+    const l = lmodalLinks.find(x => x.uuid === uuid);
+    if(!l) return;
+    const selectedCount = l.variations.filter(v => lmodalInSub.has(v.id)).length;
+    const totalCount = l.variations.length;
+    const allSelected = selectedCount === totalCount && totalCount > 0;
+    
+    if(allSelected) l.variations.forEach(v => lmodalInSub.delete(v.id));
+    else l.variations.forEach(v => lmodalInSub.add(v.id));
+    renderLmodalList(lmodalLinks);
+}
+
+function toggleChildCheck(vid) {
+  if(lmodalInSub.has(vid)) lmodalInSub.delete(vid);
+  else lmodalInSub.add(vid);
+  renderLmodalList(lmodalLinks);
 }
 
 function lmodalSelectAll(state){
@@ -1572,8 +1631,8 @@ function updateLmodalCount(){
 
 function filterLmodal(q){
   q=q.trim().toLowerCase();
-  document.querySelectorAll('#modal-links-body .lrow-v2').forEach(row=>{
-    row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
+  document.querySelectorAll('#modal-links-body .lrow-group').forEach(group=>{
+    group.style.display = !q || group.dataset.name.includes(q) ? '' : 'none';
   });
 }
 
@@ -1588,6 +1647,7 @@ async function saveSubLinks(){
     loadSubs();loadLinks();
   }catch(e){toast('خطا در ذخیره','err')}
 }
+
 async function loadSubsPage(){
   document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all';
   try{
@@ -2594,6 +2654,14 @@ def fmt_bytes(b: int) -> str:
     if b < 1024**3: return f"{b/1024**2:.2f} MB"
     return f"{b/1024**3:.2f} GB"
 
+def format_sub_url(domain: str, path: str, default_host: str) -> str:
+    domain = domain.strip() if domain else ""
+    if not domain:
+        domain = default_host
+    if not domain.startswith("http://") and not domain.startswith("https://"):
+        domain = "https://" + domain
+    return f"{domain.rstrip('/')}{path}"
+
 def uptime() -> str:
     secs = int(time.time() - stats["start_time"])
     h, m, s = secs // 3600, (secs % 3600) // 60, secs % 60
@@ -2806,6 +2874,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
     speed_limit_bytes = 0 if sv <= 0 else parse_speed_to_bytes(sv, su)
     protocol = body.get("protocol") or DEFAULT_PROTOCOL
     fingerprint = (body.get("fingerprint") or DEFAULT_FINGERPRINT).strip().lower()
+    custom_domain = (body.get("custom_domain") or "").strip()
     
     uid = generate_uuid()
     async with LINKS_LOCK:
@@ -2815,7 +2884,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
             "active": True, "expires_at": expires_at, "note": (body.get("note") or "").strip()[:200],
             "protocol": protocol, "fingerprint": fingerprint, "alpn": (body.get("alpn") or "").strip()[:100],
             "port": port, "ip_limit": ip_limit, "speed_limit_bytes": speed_limit_bytes,
-            "customs": body.get("customs", [])
+            "customs": body.get("customs", []), "custom_domain": custom_domain
         }
     asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
@@ -2836,7 +2905,7 @@ async def list_links(request: Request, _=Depends(require_auth)):
             
         result.append({
             "uuid": uid, **d, "sub_ids": belong_subs, "expired": is_link_expired(d),
-            "variations": variations, "sub_url": f"https://{host}/sub/{uid}",
+            "variations": variations, "sub_url": format_sub_url(d.get("custom_domain"), f"/sub/{uid}", host),
             "connected_ips": len(unique_ips_for_uuid(uid)),
         })
     result.sort(key=lambda x: x["created_at"], reverse=True)
@@ -2852,6 +2921,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         if "label" in body: link["label"] = str(body["label"])[:60]
         if "note" in body: link["note"] = str(body["note"])[:200]
         if "customs" in body: link["customs"] = body["customs"]
+        if "custom_domain" in body: link["custom_domain"] = str(body["custom_domain"]).strip()
         if "reset_usage" in body and body["reset_usage"]: link["used_bytes"] = 0
         if "limit_value" in body:
             lv, lu = float(body.get("limit_value") or 0), body.get("limit_unit") or "GB"
@@ -2891,14 +2961,19 @@ async def create_sub(request: Request, _=Depends(require_auth)):
     name = (body.get("name") or "گروه جدید").strip()[:60]
     desc = (body.get("desc") or "").strip()[:200]
     password = (body.get("password") or "").strip()
+    custom_domain = (body.get("custom_domain") or "").strip()
     sub_id = generate_uuid()
     uuid_key = secrets.token_urlsafe(16)
     async with SUBS_LOCK:
-        SUBS[sub_id] = {"name": name, "desc": desc, "password_hash": hash_password(password) if password else None, "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), "link_ids": []}
+        SUBS[sub_id] = {"name": name, "desc": desc, "password_hash": hash_password(password) if password else None, "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), "link_ids": [], "custom_domain": custom_domain}
     asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» ساخته شد", "ok")
     host = get_host(request)
-    return {"sub_id": sub_id, **SUBS[sub_id], "public_url": f"https://{host}/p/{uuid_key}", "sub_url": f"https://{host}/sub-group/{uuid_key}"}
+    return {
+        "sub_id": sub_id, **SUBS[sub_id],
+        "public_url": format_sub_url(custom_domain, f"/p/{uuid_key}", host),
+        "sub_url": format_sub_url(custom_domain, f"/sub-group/{uuid_key}", host)
+    }
 
 @app.get("/api/subs")
 async def list_subs(request: Request, _=Depends(require_auth)):
@@ -3414,7 +3489,7 @@ async def public_sub_data(uuid_key: str, request: Request):
 
     return {
         "locked": False, "name": sub["name"], "desc": sub.get("desc", ""),
-        "sub_url": f"https://{host}/sub-group/{uuid_key}",
+        "sub_url": format_sub_url(sub.get("custom_domain"), f"/sub-group/{uuid_key}", host),
         "active_connections": active_conns,
         "total_used_fmt": fmt_bytes(sum(snap.get(lid_str.split("#")[0], {}).get("used_bytes", 0) for lid_str in link_ids)),
         "links": links_out,

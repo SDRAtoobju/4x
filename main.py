@@ -643,6 +643,13 @@ a{color:inherit;text-decoration:none}
 </head>
 <body>
 <div class="toast" id="toast"></div>
+<div class="modal-bg" id="modal-variations">
+  <div class="modal" style="max-width:440px; padding: 22px;">
+    <button class="modal-close" onclick="closeModal('modal-variations')"><i class="ti ti-x"></i></button>
+    <div class="modal-title"><i class="ti ti-layers-linked"></i> لینک‌های اتصال</div>
+    <div id="variations-list" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;max-height:60vh;overflow-y:auto;padding-right:5px;"></div>
+  </div>
+</div>
 <div class="modal-bg" id="modal-links">
   <div class="modal-v2" style="max-width:500px">
     <div class="lmodal-head">
@@ -711,14 +718,9 @@ a{color:inherit;text-decoration:none}
     <div class="fg" style="margin-bottom:13px"><label>عنوان</label><input class="fi" id="el-label" style="width:100%"></div>
     
     <div class="fg" style="margin-bottom:13px">
-      <label>آدرس و SNI (کاستوم)</label>
-      <div style="display:flex;gap:8px;margin-bottom:6px">
-        <input class="fi" id="el-address" placeholder="آدرس اتصال (خالی = پیش‌فرض)" style="flex:1">
-      </div>
-      <div style="display:flex;gap:8px">
-        <input class="fi" id="el-host-sni" placeholder="Host/SNI (خالی = همان آدرس)" style="flex:1">
-        <button class="btn btn-g" onclick="document.getElementById('el-address').value='';document.getElementById('el-host-sni').value=''" title="پاک کردن"><i class="ti ti-refresh"></i></button>
-      </div>
+      <label>کانفیگ‌های کاستوم (CDN / IP)</label>
+      <div id="el-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
+      <button class="btn btn-sm btn-g" type="button" onclick="addCustomField('el')"><i class="ti ti-plus"></i> افزودن کاستوم جدید</button>
     </div>
 
     <div class="form-row" style="margin-bottom:13px">
@@ -871,14 +873,9 @@ a{color:inherit;text-decoration:none}
       </div>
 
       <div class="cp-block mb16">
-        <div class="cp-block-label"><i class="ti ti-world"></i> آدرس و SNI (کاستوم/CDN)</div>
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input class="cp-input-full" id="nl-address" placeholder="آدرس اتصال یا IP (خالی = پیش‌فرض)" style="flex:1">
-        </div>
-        <div style="display:flex;gap:8px">
-          <input class="cp-input-full" id="nl-host-sni" placeholder="Host و SNI (خالی = همان آدرس بالا)" style="flex:1">
-          <button class="btn btn-g" onclick="document.getElementById('nl-address').value='';document.getElementById('nl-host-sni').value=''" title="پاک کردن"><i class="ti ti-refresh"></i> پیش‌فرض</button>
-        </div>
+        <div class="cp-block-label"><i class="ti ti-world"></i> کانفیگ‌های کاستوم (CDN / IP)</div>
+        <div id="nl-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+        <button class="btn btn-sm btn-g" type="button" onclick="addCustomField('nl')"><i class="ti ti-plus"></i> افزودن کاستوم جدید</button>
       </div>
 
       <div class="cp-block mb16">
@@ -1348,14 +1345,8 @@ async function loadLinks(){
       <div class="cfg-divider-v"></div>
       <div class="cfg-actions">
         <button class="tog${allowed?' on':''}" onclick="toggleActive('${l.uuid}',${!l.active})" title="فعال/غیرفعال"></button>
-        ${(l.address || l.host_sni) ? `
-          <button class="btn btn-sm btn-g btn-icon" style="color:var(--accent);border-color:var(--accent)" onclick="navigator.clipboard.writeText('${esc(l.vless_link)}').then(()=>toast('لینک کاستوم کپی شد','ok'))" title="کپی لینک کاستوم"><i class="ti ti-copy"></i></button>
-          <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.vless_link_default)}').then(()=>toast('لینک سرور کپی شد','ok'))" title="کپی لینک اورجینال سرور"><i class="ti ti-server"></i></button>
-        ` : `
-          <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.vless_link)}').then(()=>toast('لینک کپی شد','ok'))" title="کپی لینک"><i class="ti ti-copy"></i></button>
-        `}
+        <button class="btn btn-sm btn-p btn-icon" style="width:auto;padding:0 10px" onclick="openVariations('${l.uuid}')" title="لینک‌ها"><i class="ti ti-layers-linked"></i> ${l.variations.length} لینک</button>
         <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.sub_url)}').then(()=>toast('Sub کپی شد','ok'))" title="Sub URL"><i class="ti ti-rss"></i></button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="showQR('${esc(l.vless_link)}')" title="QR"><i class="ti ti-qrcode"></i></button>
         <button class="btn btn-sm btn-amber btn-icon" onclick="openEditLink('${l.uuid}')" title="ویرایش"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-g btn-icon" onclick="resetUsage('${l.uuid}')" title="ریست مصرف"><i class="ti ti-rotate"></i></button>
         <button class="btn btn-sm btn-d btn-icon" onclick="deleteLink('${l.uuid}')" title="حذف"><i class="ti ti-trash"></i></button>
@@ -1372,7 +1363,6 @@ async function createLink(){
   const unit=document.getElementById('nl-unit').value;
   const exp=document.getElementById('nl-exp').value;
   const note=document.getElementById('nl-note').value.trim();
-  const sub_id=document.getElementById('nl-sub').value||null;
   const protocol=document.getElementById('nl-proto').value||'vless-ws';
   const fingerprint=document.getElementById('nl-fp').value||'chrome';
   const alpn=document.getElementById('nl-alpn').value.trim();
@@ -1380,12 +1370,13 @@ async function createLink(){
   const ip_limit=Number(document.getElementById('nl-iplimit').value)||0;
   const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
   const speed_limit_unit=document.getElementById('nl-speed-unit').value;
-  const address=document.getElementById('nl-address').value.trim();
-  const host_sni=document.getElementById('nl-host-sni').value.trim();
+  const customs=getCustomFields('nl');
+
   try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,sub_id,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,host_sni})});
+    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs})});
     if(!r.ok)throw new Error('failed');
-    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-address','nl-host-sni'].forEach(id=>document.getElementById(id).value='');
+    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('nl-customs-list').innerHTML='';
     toast('کانفیگ ساخته شد ✓','ok');loadLinks();
   }catch(e){toast('خطا در ساخت','err')}
 }
@@ -1402,10 +1393,12 @@ function openEditLink(uuid){
   document.getElementById('el-alpn').value=l.alpn||'';
   document.getElementById('el-port').value=l.port||443;
   document.getElementById('el-iplimit').value=l.ip_limit||0;
-  document.getElementById('el-address').value=l.address||'';
-  document.getElementById('el-host-sni').value=l.host_sni||'';
   if(!l.speed_limit_bytes){document.getElementById('el-speed').value='0';document.getElementById('el-speed-unit').value='MBIT';}
   else{document.getElementById('el-speed').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-speed-unit').value='MBIT';}
+  
+  document.getElementById('el-customs-list').innerHTML = '';
+  (l.customs || []).forEach(c => addCustomField('el', c.name, c.address, c.host_sni));
+  
   openModal('modal-edit-link');
 }
 async function saveEditLink(){
@@ -1421,9 +1414,9 @@ async function saveEditLink(){
   const ip_limit=Number(document.getElementById('el-iplimit').value)||0;
   const speed_limit_value=Number(document.getElementById('el-speed').value)||0;
   const speed_limit_unit=document.getElementById('el-speed-unit').value;
-  const address=document.getElementById('el-address').value.trim();
-  const host_sni=document.getElementById('el-host-sni').value.trim();
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,host_sni};
+  const customs=getCustomFields('el');
+
+  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs};
   if(exp&&Number(exp)>0)body.expires_days=Number(exp);
   try{
     const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1514,8 +1507,7 @@ async function deleteSub(sub_id){
   if(!confirm('حذف این گروه؟ کانفیگ‌ها حذف نمی‌شوند.'))return;
   try{const r=await authF('/api/subs/'+sub_id,{method:'DELETE'});if(!r.ok)throw new Error();toast('گروه حذف شد ✓','ok');loadSubs();loadLinks();}catch(e){toast('خطا','err')}
 }
-let lmodalLinks=[], lmodalInSub=new Set(), lmodalCustomLinks=new Set();
-function toggleCustomLink(uuid, checked){ if(checked) lmodalCustomLinks.add(uuid); else lmodalCustomLinks.delete(uuid); }
+let lmodalLinks=[], lmodalInSub=new Set(), currentSubId=null;
 
 async function openSubLinks(sub_id,name){
   currentSubId=sub_id;
@@ -1529,56 +1521,67 @@ async function openSubLinks(sub_id,name){
     const {subs=[]}=await sr.json();
     const thisSub=subs.find(s=>s.sub_id===sub_id);
     lmodalInSub=new Set(thisSub?.link_ids||[]);
-    lmodalCustomLinks=new Set(thisSub?.custom_links||[]);
     lmodalLinks=links;
     renderLmodalList(links);
   }catch(e){toast('خطا در بارگذاری','err')}
 }
+
 function renderLmodalList(links){
   const body=document.getElementById('modal-links-body');
   if(!links.length){body.innerHTML='<div class="empty" style="padding:30px"><i class="ti ti-link-off"></i><p>هنوز کانفیگی وجود ندارد</p></div>';updateLmodalCount();return}
-  body.innerHTML=links.map(l=>{
-    const checked=lmodalInSub.has(l.uuid);
-    const on=l.active&&!l.expired;
-    return `<div class="lrow-v2 ${checked?'checked':''}" data-uuid="${l.uuid}" data-name="${esc(l.label).toLowerCase()}" onclick="toggleLrow('${l.uuid}',this)">
-      <div class="lrow-v2-check"><i class="ti ti-check"></i></div>
-      <div class="lrow-v2-avatar"><i class="ti ti-key"></i></div>
-      <div class="lrow-v2-info">
-        <div class="lrow-v2-name">${esc(l.label)}</div>
-        <div class="lrow-v2-meta"><i class="ti ti-database" style="font-size:10px"></i> ${fmtB(l.used_bytes)}
-          ${(l.address || l.host_sni) ? `<label style="margin-right:12px;display:flex;align-items:center;gap:4px;color:var(--accent)" onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleCustomLink('${l.uuid}', this.checked)" ${lmodalCustomLinks.has(l.uuid)?'checked':''}> با لینک کاستوم</label>` : ''}
-        </div>
-      </div>
-      <span class="lrow-v2-status ${on?'on':'off'}">${on?'فعال':'غیرفعال'}</span>
-    </div>`;
-  }).join('');
+  
+  let html = '';
+  links.forEach(l => {
+      l.variations.forEach(v => {
+          const checked = lmodalInSub.has(v.id);
+          const on = l.active && !l.expired;
+          html += `<div class="lrow-v2 ${checked?'checked':''}" data-name="${esc(l.label).toLowerCase()} ${esc(v.name).toLowerCase()}" onclick="toggleLrow('${v.id}',this)">
+            <div class="lrow-v2-check"><i class="ti ti-check"></i></div>
+            <div class="lrow-v2-info" style="margin-right:8px">
+              <div class="lrow-v2-name">${esc(l.label)} <span style="font-size:9.5px;color:var(--accent);background:rgba(255,215,0,0.15);padding:2px 7px;border-radius:6px;margin-right:6px">${esc(v.name)}</span></div>
+              <div class="lrow-v2-meta"><i class="ti ti-database" style="font-size:10px"></i> ${fmtB(l.used_bytes)}</div>
+            </div>
+            <span class="lrow-v2-status ${on?'on':'off'}">${on?'فعال':'غیرفعال'}</span>
+          </div>`;
+      });
+  });
+  body.innerHTML = html;
   updateLmodalCount();
 }
-function toggleLrow(uuid,el){
-  if(lmodalInSub.has(uuid)){lmodalInSub.delete(uuid);el.classList.remove('checked')}
-  else{lmodalInSub.add(uuid);el.classList.add('checked')}
+
+function toggleLrow(vid,el){
+  if(lmodalInSub.has(vid)){lmodalInSub.delete(vid);el.classList.remove('checked')}
+  else{lmodalInSub.add(vid);el.classList.add('checked')}
   updateLmodalCount();
 }
+
 function lmodalSelectAll(state){
-  lmodalLinks.forEach(l=>{if(state)lmodalInSub.add(l.uuid);else lmodalInSub.delete(l.uuid)});
+  lmodalLinks.forEach(l=>{
+      l.variations.forEach(v => {
+          if(state) lmodalInSub.add(v.id);
+          else lmodalInSub.delete(v.id);
+      });
+  });
   renderLmodalList(lmodalLinks);
 }
+
 function updateLmodalCount(){
   const el=document.getElementById('lmodal-count');
   if(el)el.textContent=toFa(lmodalInSub.size)+' انتخاب شده';
 }
+
 function filterLmodal(q){
   q=q.trim().toLowerCase();
   document.querySelectorAll('#modal-links-body .lrow-v2').forEach(row=>{
     row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
   });
 }
+
 async function saveSubLinks(){
   if(!currentSubId)return;
   const link_ids=[...lmodalInSub];
-  const custom_links=[...lmodalCustomLinks].filter(id => lmodalInSub.has(id));
   try{
-    const r=await authF('/api/subs/'+currentSubId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({link_ids, custom_links})});
+    const r=await authF('/api/subs/'+currentSubId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({link_ids})});
     if(!r.ok)throw new Error();
     closeModal('modal-links');
     toast('کانفیگ‌های گروه ذخیره شدند ✓','ok');
@@ -1774,6 +1777,49 @@ async function downloadFromCf() {
       setTimeout(() => location.reload(), 1500);
     } else throw new Error();
   } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
+}
+
+function addCustomField(prefix, name='', address='', sni='') {
+    const container = document.getElementById(`${prefix}-customs-list`);
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.1);padding:6px 8px;border-radius:10px;border:1px solid var(--card-b)';
+    div.innerHTML = `
+        <input class="fi ${prefix}-c-name" placeholder="نام (مثل: ایرانسل)" style="width:25%" value="${esc(name)}">
+        <input class="fi ${prefix}-c-addr" placeholder="آدرس IP یا دامنه" style="width:35%" value="${esc(address)}">
+        <input class="fi ${prefix}-c-sni" placeholder="SNI" style="width:30%" value="${esc(sni)}">
+        <button class="btn btn-d btn-icon" style="flex-shrink:0" onclick="this.parentElement.remove()"><i class="ti ti-trash"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+function getCustomFields(prefix) {
+    const customs = [];
+    document.querySelectorAll(`#${prefix}-customs-list > div`).forEach(row => {
+        const name = row.querySelector(`.${prefix}-c-name`).value.trim();
+        const addr = row.querySelector(`.${prefix}-c-addr`).value.trim();
+        const sni = row.querySelector(`.${prefix}-c-sni`).value.trim();
+        if (name || addr || sni) customs.push({name: name || 'کاستوم', address: addr, host_sni: sni});
+    });
+    return customs;
+}
+
+function openVariations(uuid) {
+    const l = allLinksList.find(x=>x.uuid===uuid);
+    if(!l) return;
+    const list = document.getElementById('variations-list');
+    list.innerHTML = l.variations.map(v => `
+        <div style="background:var(--accent-d);border:1px solid var(--card-b);padding:12px 14px;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:700;font-size:13px;color:var(--t1)">${esc(v.name)}</div>
+                <div style="font-size:10px;color:var(--t3);margin-top:4px;font-family:ui-monospace,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" dir="ltr">${esc(v.link).substring(0,40)}...</div>
+            </div>
+            <div style="display:flex;gap:6px">
+                <button class="btn btn-sm btn-p" onclick="navigator.clipboard.writeText('${esc(v.link)}').then(()=>toast('کپی شد ✓','ok'))"><i class="ti ti-copy"></i></button>
+                <button class="btn btn-sm btn-o" onclick="showQR('${esc(l.label)} - ${esc(v.name)}', '${esc(v.link)}')"><i class="ti ti-qrcode"></i></button>
+            </div>
+        </div>
+    `).join('');
+    openModal('modal-variations');
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
@@ -2262,6 +2308,23 @@ async def load_state():
                 if "cf_sync" in data: CF_SYNC_CONFIG.update(data["cf_sync"])
                 LAST_MODIFIED = data.get("saved_at", "2000-01-01T00:00:00")
                 LAST_TS = data.get("saved_ts", 0.0)
+                
+        # --- Auto Migrate Old Formats ---
+        for uid, l in LINKS.items():
+            if "address" in l or "host_sni" in l:
+                addr = l.pop("address", "")
+                sni = l.pop("host_sni", "")
+                if addr or sni:
+                    l["customs"] = [{"name": "کاستوم قدیمی", "address": addr, "host_sni": sni}]
+        for sid, s in SUBS.items():
+            if "custom_links" in s:
+                old_customs = set(s.pop("custom_links", []))
+                new_ids = []
+                for uid in s.get("link_ids", []):
+                    new_ids.append(f"{uid}#0" if uid in old_customs else uid)
+                s["link_ids"] = new_ids
+        # --------------------------------
+        
         await sync_with_cf()
     except Exception as e: logger.warning(f"Could not load state: {e}")
 
@@ -2461,22 +2524,21 @@ def generate_vless_link(
     fingerprint: str | None = None,
     alpn: str | None = None,
     port: int | None = None,
-    address: str | None = None,
-    host_sni: str | None = None,
-    force_default: bool = False
+    custom: dict | None = None
 ) -> str:
     fp = (fingerprint or DEFAULT_FINGERPRINT).strip() or DEFAULT_FINGERPRINT
     alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
     port_val = port or DEFAULT_PORT
     
-    if force_default:
-        target_addr = host
-        sni_val = host
-        host_val = host
-    else:
-        target_addr = address.strip() if address and address.strip() else host
-        sni_val = host_sni.strip() if host_sni and host_sni.strip() else target_addr
-        host_val = sni_val
+    target_addr = host
+    sni_val = host
+    host_val = host
+
+    if custom:
+        if custom.get("address"): target_addr = custom["address"].strip()
+        if custom.get("host_sni"):
+            sni_val = custom["host_sni"].strip()
+            host_val = sni_val
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
@@ -2501,12 +2563,14 @@ def generate_vless_link(
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"vless://{uuid}@{target_addr}:{port_val}?{query}#{quote(remark)}"
 
-def vless_link_for_link(link: dict, uid: str, host: str, force_default: bool = False) -> str:
+def vless_link_for_link(link: dict, uid: str, host: str, custom: dict = None) -> str:
+    var_name = custom.get("name", "") if custom else ""
+    remark = f"{link.get('label','')}" + (f" ({var_name})" if var_name else "")
     return generate_vless_link(
-        uid, host, remark=f"{link.get('label','')}",
+        uid, host, remark=remark,
         protocol=link.get("protocol", DEFAULT_PROTOCOL),
         fingerprint=link.get("fingerprint"), alpn=link.get("alpn"), port=link.get("port"),
-        address=link.get("address"), host_sni=link.get("host_sni"), force_default=force_default
+        custom=custom
     )
 
 def parse_size_to_bytes(value: float, unit: str) -> int:
@@ -2731,80 +2795,48 @@ async def get_connections(_=Depends(require_auth)):
 @app.post("/api/links")
 async def create_link(request: Request, _=Depends(require_auth)):
     body = await request.json()
-    lv = float(body.get("limit_value") or 0)
-    lu = body.get("limit_unit") or "GB"
+    lv, lu = float(body.get("limit_value") or 0), body.get("limit_unit") or "GB"
     limit_bytes = 0 if lv <= 0 else parse_size_to_bytes(lv, lu)
     exp_days = int(body.get("expires_days") or 0)
     expires_at = (datetime.now() + timedelta(days=exp_days)).isoformat() if exp_days > 0 else None
     
     port = int(body.get("port") or DEFAULT_PORT)
     ip_limit = int(body.get("ip_limit") or 0)
-    sv = float(body.get("speed_limit_value") or 0)
-    su = body.get("speed_limit_unit") or "MBIT"
+    sv, su = float(body.get("speed_limit_value") or 0), body.get("speed_limit_unit") or "MBIT"
     speed_limit_bytes = 0 if sv <= 0 else parse_speed_to_bytes(sv, su)
-    
     protocol = body.get("protocol") or DEFAULT_PROTOCOL
-    if protocol not in PROTOCOLS: protocol = DEFAULT_PROTOCOL
-    
     fingerprint = (body.get("fingerprint") or DEFAULT_FINGERPRINT).strip().lower()
-    if fingerprint not in FINGERPRINTS: fingerprint = DEFAULT_FINGERPRINT
-
+    
     uid = generate_uuid()
-    address = (body.get("address") or "").strip()
-    host_sni = (body.get("host_sni") or "").strip()
-
     async with LINKS_LOCK:
         LINKS[uid] = {
             "label": (body.get("label") or "لینک جدید").strip()[:60],
-            "limit_bytes": limit_bytes,
-            "used_bytes": 0,
-            "created_at": datetime.now().isoformat(),
-            "active": True,
-            "expires_at": expires_at,
-            "note": (body.get("note") or "").strip()[:200],
-            "is_default": False,
-            "sub_id": body.get("sub_id") or None,
-            "protocol": protocol,
-            "fingerprint": fingerprint,
-            "alpn": (body.get("alpn") or "").strip()[:100],
-            "port": port,
-            "ip_limit": ip_limit,
-            "speed_limit_bytes": speed_limit_bytes,
-            "address": address,
-            "host_sni": host_sni
+            "limit_bytes": limit_bytes, "used_bytes": 0, "created_at": datetime.now().isoformat(),
+            "active": True, "expires_at": expires_at, "note": (body.get("note") or "").strip()[:200],
+            "protocol": protocol, "fingerprint": fingerprint, "alpn": (body.get("alpn") or "").strip()[:100],
+            "port": port, "ip_limit": ip_limit, "speed_limit_bytes": speed_limit_bytes,
+            "customs": body.get("customs", [])
         }
-    
-    sub_id = body.get("sub_id")
-    if sub_id:
-        async with SUBS_LOCK:
-            if sub_id in SUBS:
-                ids = SUBS[sub_id].setdefault("link_ids", [])
-                if uid not in ids: ids.append(uid)
-                
     asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
-    
-    host = get_host(request)
-    return {"uuid": uid, **LINKS[uid], "expired": False, "vless_link": vless_link_for_link(LINKS[uid], uid, host), "sub_url": f"https://{host}/sub/{uid}"}
+    return {"uuid": uid, **LINKS[uid]}
 
 @app.get("/api/links")
 async def list_links(request: Request, _=Depends(require_auth)):
     host = get_host(request)
-    async with LINKS_LOCK:
-        snap = dict(LINKS)
-    async with SUBS_LOCK:
-        subs_snap = dict(SUBS)
+    async with LINKS_LOCK: snap = dict(LINKS)
+    async with SUBS_LOCK: subs_snap = dict(SUBS)
     result = []
     for uid, d in snap.items():
-        belong_subs = [sid for sid, s in subs_snap.items() if uid in s.get("link_ids", [])]
+        belong_subs = [sid for sid, s in subs_snap.items() if any(l.startswith(uid) for l in s.get("link_ids", []))]
+        
+        variations = [{"id": uid, "name": "پیش‌فرض (Default)", "link": vless_link_for_link(d, uid, host)}]
+        for i, c in enumerate(d.get("customs", [])):
+            variations.append({"id": f"{uid}#{i}", "name": c.get("name", f"Custom {i+1}"), "link": vless_link_for_link(d, uid, host, c)})
+            
         result.append({
-            "uuid": uid,
-            **d,
-            "sub_ids": belong_subs,
-            "expired": is_link_expired(d),
-            "vless_link": vless_link_for_link(d, uid, host),
-            "vless_link_default": vless_link_for_link(d, uid, host, force_default=True),
-            "sub_url": f"https://{host}/sub/{uid}",
+            "uuid": uid, **d, "sub_ids": belong_subs, "expired": is_link_expired(d),
+            "variations": variations, "sub_url": f"https://{host}/sub/{uid}",
             "connected_ips": len(unique_ips_for_uuid(uid)),
         })
     result.sort(key=lambda x: x["created_at"], reverse=True)
@@ -2816,26 +2848,18 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
     async with LINKS_LOCK:
         if uid not in LINKS: raise HTTPException(status_code=404, detail="link not found")
         link = LINKS[uid]
-        
-        if "active" in body:
-            link["active"] = bool(body["active"])
-            log_activity("link", f"کانفیگ «{link['label']}» {'فعال' if link['active'] else 'غیرفعال'} شد", "ok" if link["active"] else "warn")
+        if "active" in body: link["active"] = bool(body["active"])
         if "label" in body: link["label"] = str(body["label"])[:60]
         if "note" in body: link["note"] = str(body["note"])[:200]
-        if "address" in body: link["address"] = str(body["address"]).strip()
-        if "host_sni" in body: link["host_sni"] = str(body["host_sni"]).strip()
-        if "reset_usage" in body and body["reset_usage"]:
-            link["used_bytes"] = 0
-            log_activity("link", f"مصرف کانفیگ «{link['label']}» ریست شد", "info")
+        if "customs" in body: link["customs"] = body["customs"]
+        if "reset_usage" in body and body["reset_usage"]: link["used_bytes"] = 0
         if "limit_value" in body:
             lv, lu = float(body.get("limit_value") or 0), body.get("limit_unit") or "GB"
             link["limit_bytes"] = 0 if lv <= 0 else parse_size_to_bytes(lv, lu)
         if "expires_days" in body:
             ed = int(body["expires_days"] or 0)
             link["expires_at"] = (datetime.now() + timedelta(days=ed)).isoformat() if ed > 0 else None
-        if "fingerprint" in body:
-            fp = str(body.get("fingerprint") or DEFAULT_FINGERPRINT).strip().lower()
-            link["fingerprint"] = fp if fp in FINGERPRINTS else DEFAULT_FINGERPRINT
+        if "fingerprint" in body: link["fingerprint"] = str(body.get("fingerprint") or DEFAULT_FINGERPRINT).strip().lower()
         if "alpn" in body: link["alpn"] = str(body.get("alpn") or "").strip()[:100]
         if "port" in body: link["port"] = int(body.get("port") or DEFAULT_PORT)
         if "ip_limit" in body: link["ip_limit"] = int(body.get("ip_limit") or 0)
@@ -2843,7 +2867,6 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
             sv, su = float(body.get("speed_limit_value") or 0), body.get("speed_limit_unit") or "MBIT"
             link["speed_limit_bytes"] = 0 if sv <= 0 else parse_speed_to_bytes(sv, su)
             reset_bucket(uid)
-
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
@@ -2921,24 +2944,30 @@ async def subscription_single(uuid: str, request: Request):
     async with LINKS_LOCK: link = LINKS.get(uuid)
     if not link or not is_link_allowed(link): raise HTTPException(status_code=404)
     host = get_host(request)
-    raw_text = vless_link_for_link(link, uuid, host)
     
+    lines = [vless_link_for_link(link, uuid, host)]
+    for c in link.get("customs", []):
+        lines.append(vless_link_for_link(link, uuid, host, c))
+        
+    raw_text = "\n".join(lines)
     if request.query_params.get("plain") == "1":
         return Response(content=raw_text, media_type="text/plain", headers={"profile-title": quote(link["label"])})
-        
     content = base64.b64encode(raw_text.encode("utf-8")).decode("utf-8")
     return Response(content=content, media_type="text/plain", headers={"profile-title": quote(link["label"])})
 
 @app.get("/sub-all")
 async def subscription_all(request: Request, _=Depends(require_auth)):
     host = get_host(request)
+    lines = []
     async with LINKS_LOCK:
-        lines = [vless_link_for_link(d, uid, host) for uid, d in LINKS.items() if is_link_allowed(d)]
+        for uid, d in LINKS.items():
+            if is_link_allowed(d):
+                lines.append(vless_link_for_link(d, uid, host))
+                for c in d.get("customs", []):
+                    lines.append(vless_link_for_link(d, uid, host, c))
+                    
     raw_text = "\n".join(lines)
-    
-    if request.query_params.get("plain") == "1":
-        return Response(content=raw_text, media_type="text/plain")
-        
+    if request.query_params.get("plain") == "1": return Response(content=raw_text, media_type="text/plain")
     content = base64.b64encode(raw_text.encode("utf-8")).decode("utf-8")
     return Response(content=content, media_type="text/plain")
 
@@ -2950,18 +2979,23 @@ async def sub_group_subscription(uuid_key: str, request: Request):
     if sub.get("password_hash") and hash_password(request.query_params.get("pw", "")) != sub["password_hash"]:
         raise HTTPException(status_code=403, detail="wrong password")
     host = get_host(request)
+    lines = []
     async with LINKS_LOCK:
-        lines = []
-        for lid in sub.get("link_ids", []):
-            if lk := LINKS.get(lid):
+        for lid_str in sub.get("link_ids", []):
+            parts = lid_str.split("#")
+            uid = parts[0]
+            if lk := LINKS.get(uid):
                 if is_link_allowed(lk):
-                    lines.append(vless_link_for_link(lk, lid, host, force_default=lid not in sub.get("custom_links", [])))
+                    if len(parts) > 1:
+                        idx = int(parts[1])
+                        customs = lk.get("customs", [])
+                        if idx < len(customs): lines.append(vless_link_for_link(lk, uid, host, customs[idx]))
+                    else:
+                        lines.append(vless_link_for_link(lk, uid, host))
     
     raw_text = "\n".join(lines)
-    
     if request.query_params.get("plain") == "1":
         return Response(content=raw_text, media_type="text/plain", headers={"profile-title": quote(sub["name"])})
-        
     content = base64.b64encode(raw_text.encode("utf-8")).decode("utf-8")
     return Response(content=content, media_type="text/plain", headers={"profile-title": quote(sub["name"])})
 
@@ -3349,28 +3383,40 @@ async def public_sub_data(uuid_key: str, request: Request):
 
     host = get_host(request)
     link_ids = sub.get("link_ids", [])
-    snap = dict(LINKS)
+    async with LINKS_LOCK: snap = dict(LINKS)
 
     links_out = []
     active_conns = 0
-    for lid in link_ids:
-        link = snap.get(lid)
+    for lid_str in link_ids:
+        parts = lid_str.split("#")
+        uid = parts[0]
+        link = snap.get(uid)
         if not link: continue
-        conn_count = sum(1 for c in connections.values() if c.get("uuid") == lid)
-        active_conns += conn_count
+        
+        active_conns += sum(1 for c in connections.values() if c.get("uuid") == uid)
+        
+        custom = None
+        var_name = "پیش‌فرض"
+        if len(parts) > 1:
+            idx = int(parts[1])
+            customs = link.get("customs", [])
+            if idx < len(customs):
+                custom = customs[idx]
+                var_name = custom.get("name", f"Custom {idx+1}")
+                
         links_out.append({
-            "uuid": lid, "label": link["label"], "active": is_link_allowed(link),
+            "uuid": lid_str, "label": f"{link['label']} ({var_name})", "active": is_link_allowed(link),
             "protocol": link.get("protocol", DEFAULT_PROTOCOL),
             "used_fmt": fmt_bytes(link.get("used_bytes", 0)),
             "limit_bytes": link.get("limit_bytes", 0),
-            "vless_link": vless_link_for_link(link, lid, host, force_default=lid not in sub.get("custom_links", []))
+            "vless_link": vless_link_for_link(link, uid, host, custom)
         })
 
     return {
         "locked": False, "name": sub["name"], "desc": sub.get("desc", ""),
         "sub_url": f"https://{host}/sub-group/{uuid_key}",
         "active_connections": active_conns,
-        "total_used_fmt": fmt_bytes(sum(snap.get(lid, {}).get("used_bytes", 0) for lid in link_ids)),
+        "total_used_fmt": fmt_bytes(sum(snap.get(lid_str.split("#")[0], {}).get("used_bytes", 0) for lid_str in link_ids)),
         "links": links_out,
     }
 

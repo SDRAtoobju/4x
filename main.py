@@ -3022,30 +3022,10 @@ def reset_bucket(uuid: str): _buckets.pop(uuid, None)
 current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
 
 async def update_time_loop():
-    """آپدیت زمان و پاکسازی خودکار کانکشن‌های مرده (Ghost Connections)"""
+    """آپدیت زمان در پس‌زمینه (جلوگیری از محاسبه زمان به ازای هر کیلوبایت ترافیک)"""
     global current_hour_str
     while True:
         current_hour_str = datetime.now(IRAN_TZ).strftime("%H:00")
-        
-        # پیدا کردن آی‌پی‌هایی که قطع شده‌اند اما در لیست مانده‌اند
-        dead_conns = []
-        for cid, cinfo in list(connections.items()):
-            current_bytes = cinfo.get("bytes", 0)
-            last_bytes = cinfo.get("last_bytes_check", 0)
-            
-            if current_bytes > last_bytes:
-                cinfo["last_bytes_check"] = current_bytes
-                cinfo["idle_minutes"] = 0
-            else:
-                cinfo["idle_minutes"] = cinfo.get("idle_minutes", 0) + 1
-                
-            if cinfo["idle_minutes"] >= 3:
-                dead_conns.append(cid)
-                
-        # حذف اتصالات مرده از پنل
-        for cid in dead_conns:
-            connections.pop(cid, None)
-            
         await asyncio.sleep(60)
 
 @app.on_event("startup")
@@ -3053,8 +3033,7 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
-RELAY_BUF = 65536  # بافر استاندارد 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
-FLUSH_THRESH = 262144 # رفرش ترافیک هر 256KB برای کاهش فشار پردازنده
+RELAY_BUF = 65536  # کاهش به 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
 
 def _tune_socket(writer: asyncio.StreamWriter):
     """تنظیمات سوکت برای کاهش پینگ و جلوگیری از تاخیر بسته‌ها (TCP_NODELAY)"""
@@ -3099,7 +3078,7 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= FLUSH_THRESH: 
+            if local_bytes >= 262144: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3112,7 +3091,8 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            if writer.transport.get_write_buffer_size() > RELAY_BUF: 
+            # درین کردنِ زودهنگام روی 64KB تا جریان آپلود پیوسته (Smooth) بماند
+            if writer.transport.get_write_buffer_size() > 65536: 
                 await writer.drain()
     except Exception: pass
     finally:
@@ -3128,13 +3108,13 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
     local_bytes = 0
     try:
         while True:
-            data = await reader.read(RELAY_BUF)
+            data = await reader.read(65536) # خواندن نرم و پیوسته
             if not data: break
             
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= FLUSH_THRESH: 
+            if local_bytes >= 262144: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3236,30 +3216,21 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     first = True
     sess = xhttp_sessions.get(session_id)
     conn_info = connections.get(sess["conn_id"]) if sess else None
-    local_bytes = 0
     try:
         while True:
-            data = await reader.read(RELAY_BUF)
+            data = await reader.read(65536) # استفاده از بافر 64KB
             if not data: break
-            
-            size = len(data)
-            local_bytes += size
-            if local_bytes >= FLUSH_THRESH:
-                if not await check_and_use(uuid, local_bytes): break
-                if conn_info: conn_info["bytes"] += local_bytes
-                local_bytes = 0
+            if not await check_and_use(uuid, len(data)): break
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(size)
+                if rate > 0: await _get_bucket(uuid, rate).consume(len(data))
                 
+            if conn_info: conn_info["bytes"] += len(data)
             await down_q.put((b"\x00\x00" + data) if first else data)
             first = False
     except Exception: pass
     finally:
-        if local_bytes > 0:
-            await check_and_use(uuid, local_bytes)
-            if conn_info: conn_info["bytes"] += local_bytes
         await _teardown_xhttp(session_id)
 
 async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -> dict:
@@ -3273,15 +3244,14 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         xhttp_sessions[session_id] = sess
         return sess
 
-def _downstream_gen(sess: dict, session_id: str):
+def _downstream_gen(sess: dict):
     async def gen():
         try:
             while True:
                 chunk = await sess["down_q"].get()
                 if chunk is None: break
                 yield chunk
-        finally: 
-            asyncio.create_task(_teardown_xhttp(session_id))
+        finally: pass
     return gen()
 
 @router.get("/xhttp-siz10/{mode}/{uuid}/{session_id}")
@@ -3290,7 +3260,7 @@ async def xhttp_downlink(uuid: str, session_id: str, request: Request, mode: str
     ip = client_ip(request)
     sess = await _get_or_create_xhttp(uuid, mode, session_id, ip)
     if sess.get("closed"): raise HTTPException(status_code=404)
-    return StreamingResponse(_downstream_gen(sess, session_id), media_type="application/octet-stream")
+    return StreamingResponse(_downstream_gen(sess), media_type="application/octet-stream")
 
 @router.post("/xhttp-siz10/packet-up/{uuid}/{session_id}/{seq}")
 async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Request):
@@ -3342,22 +3312,16 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
     if sess.get("closed"): raise HTTPException(status_code=404)
     
     conn_info = connections.get(sess["conn_id"])
-    local_bytes = 0
-    
     try:
         async for chunk in request.stream():
             if not chunk: continue
-            size = len(chunk)
-            local_bytes += size
-            
-            if local_bytes >= FLUSH_THRESH:
-                if not await check_and_use(uuid, local_bytes): raise HTTPException(status_code=403)
-                if conn_info: conn_info["bytes"] += local_bytes
-                local_bytes = 0
+            if not await check_and_use(uuid, len(chunk)): raise HTTPException(status_code=403)
             
             if link := LINKS.get(uuid):
                 rate = link.get("speed_limit_bytes", 0)
-                if rate > 0: await _get_bucket(uuid, rate).consume(size)
+                if rate > 0: await _get_bucket(uuid, rate).consume(len(chunk))
+                
+            if conn_info: conn_info["bytes"] += len(chunk)
 
             if sess["writer"] is None:
                 reader, writer = await _open_tcp_from_header(chunk)
@@ -3366,15 +3330,11 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > FLUSH_THRESH:
+            if sess["writer"].transport.get_write_buffer_size() > 524288:
                 await sess["writer"].drain()
     except Exception:
         await _teardown_xhttp(session_id)
         raise HTTPException(status_code=502)
-    finally:
-        if local_bytes > 0:
-            await check_and_use(uuid, local_bytes)
-            if conn_info: conn_info["bytes"] += local_bytes
     return {"ok": True}
 
 app.include_router(router)

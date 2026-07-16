@@ -1340,7 +1340,10 @@ async function loadLinks(){
         ${protoBadge(l.protocol)}
         <span class="cfg-sub-tag" title="پورت اتصال"><i class="ti ti-route"></i> :${l.port||443}</span>
         ${l.address ? `<span class="cfg-sub-tag" title="آدرس اختصاصی"><i class="ti ti-world"></i> ${esc(l.address)}</span>` : ''}
-        ${l.sub_id&&allSubsList.find(s=>s.sub_id===l.sub_id)?`<span class="cfg-sub-tag"><i class="ti ti-folder"></i> ${esc(allSubsList.find(s=>s.sub_id===l.sub_id).name)}</span>`:''}
+        ${(l.sub_ids||[]).map(sid => {
+            const sub = allSubsList.find(s=>s.sub_id===sid);
+            return sub ? `<span class="cfg-sub-tag"><i class="ti ti-folder"></i> ${esc(sub.name)}</span>` : '';
+        }).join('')}
       </div>
       <div class="cfg-divider-v"></div>
       <div class="cfg-actions">
@@ -1577,9 +1580,6 @@ async function saveSubLinks(){
   try{
     const r=await authF('/api/subs/'+currentSubId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({link_ids, custom_links})});
     if(!r.ok)throw new Error();
-    await Promise.all(lmodalLinks.map(l=>
-      authF('/api/links/'+l.uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({sub_id:lmodalInSub.has(l.uuid)?currentSubId:null})})
-    ));
     closeModal('modal-links');
     toast('کانفیگ‌های گروه ذخیره شدند ✓','ok');
     loadSubs();loadLinks();
@@ -2792,11 +2792,15 @@ async def list_links(request: Request, _=Depends(require_auth)):
     host = get_host(request)
     async with LINKS_LOCK:
         snap = dict(LINKS)
+    async with SUBS_LOCK:
+        subs_snap = dict(SUBS)
     result = []
     for uid, d in snap.items():
+        belong_subs = [sid for sid, s in subs_snap.items() if uid in s.get("link_ids", [])]
         result.append({
             "uuid": uid,
             **d,
+            "sub_ids": belong_subs,
             "expired": is_link_expired(d),
             "vless_link": vless_link_for_link(d, uid, host),
             "vless_link_default": vless_link_for_link(d, uid, host, force_default=True),
@@ -2812,7 +2816,6 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
     async with LINKS_LOCK:
         if uid not in LINKS: raise HTTPException(status_code=404, detail="link not found")
         link = LINKS[uid]
-        old_sub = link.get("sub_id")
         
         if "active" in body:
             link["active"] = bool(body["active"])
@@ -2840,16 +2843,6 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
             sv, su = float(body.get("speed_limit_value") or 0), body.get("speed_limit_unit") or "MBIT"
             link["speed_limit_bytes"] = 0 if sv <= 0 else parse_speed_to_bytes(sv, su)
             reset_bucket(uid)
-            
-        new_sub = body.get("sub_id", "UNCHANGED")
-        if new_sub != "UNCHANGED": link["sub_id"] = new_sub or None
-
-    if new_sub != "UNCHANGED":
-        async with SUBS_LOCK:
-            if old_sub and old_sub in SUBS:
-                if uid in SUBS[old_sub].get("link_ids", []): SUBS[old_sub]["link_ids"].remove(uid)
-            if new_sub and new_sub in SUBS:
-                if uid not in SUBS[new_sub].setdefault("link_ids", []): SUBS[new_sub]["link_ids"].append(uid)
 
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
@@ -2859,12 +2852,11 @@ async def delete_link(uid: str, _=Depends(require_auth)):
     async with LINKS_LOCK:
         if uid not in LINKS: raise HTTPException(status_code=404)
         label = LINKS[uid]["label"]
-        sub_id = LINKS[uid].get("sub_id")
         del LINKS[uid]
-    if sub_id:
-        async with SUBS_LOCK:
-            if sub_id in SUBS and uid in SUBS[sub_id].get("link_ids", []):
-                SUBS[sub_id]["link_ids"].remove(uid)
+    async with SUBS_LOCK:
+        for s in SUBS.values():
+            if uid in s.get("link_ids", []):
+                s["link_ids"].remove(uid)
     asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{label}» حذف شد", "err")
     return {"ok": True}
@@ -2920,9 +2912,6 @@ async def delete_sub(sub_id: str, _=Depends(require_auth)):
         if sub_id not in SUBS: raise HTTPException(status_code=404)
         name = SUBS[sub_id]["name"]
         del SUBS[sub_id]
-    async with LINKS_LOCK:
-        for link in LINKS.values():
-            if link.get("sub_id") == sub_id: link["sub_id"] = None
     asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» حذف شد", "warn")
     return {"ok": True}
@@ -3381,7 +3370,7 @@ async def public_sub_data(uuid_key: str, request: Request):
         "locked": False, "name": sub["name"], "desc": sub.get("desc", ""),
         "sub_url": f"https://{host}/sub-group/{uuid_key}",
         "active_connections": active_conns,
-        "total_used_fmt": fmt_bytes(sum(l.get("used_bytes", 0) for l in snap.values() if l.get("sub_id") == sub_id)),
+        "total_used_fmt": fmt_bytes(sum(snap.get(lid, {}).get("used_bytes", 0) for lid in link_ids)),
         "links": links_out,
     }
 

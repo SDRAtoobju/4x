@@ -711,10 +711,13 @@ a{color:inherit;text-decoration:none}
     <div class="fg" style="margin-bottom:13px"><label>عنوان</label><input class="fi" id="el-label" style="width:100%"></div>
     
     <div class="fg" style="margin-bottom:13px">
-      <label>آدرس اتصال (دستی)</label>
+      <label>آدرس و SNI (کاستوم)</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input class="fi" id="el-address" placeholder="آدرس اتصال (خالی = پیش‌فرض)" style="flex:1">
+      </div>
       <div style="display:flex;gap:8px">
-        <input class="fi" id="el-address" placeholder="خالی = دامنه پیش‌فرض" style="flex:1">
-        <button class="btn btn-g" onclick="document.getElementById('el-address').value=''" title="استفاده از دامنه پنل"><i class="ti ti-refresh"></i> پیش‌فرض</button>
+        <input class="fi" id="el-host-sni" placeholder="Host/SNI (خالی = همان آدرس)" style="flex:1">
+        <button class="btn btn-g" onclick="document.getElementById('el-address').value='';document.getElementById('el-host-sni').value=''" title="پاک کردن"><i class="ti ti-refresh"></i></button>
       </div>
     </div>
 
@@ -749,13 +752,7 @@ a{color:inherit;text-decoration:none}
       <div class="fg" style="flex:1"><label>محدودیت سرعت (0 = نامحدود)</label><input class="fi" id="el-speed" type="number" min="0" step="0.5" style="width:100%"></div>
       <div class="fg"><label>واحد</label><select class="fs" id="el-speed-unit"><option value="MBIT">Mbps</option><option value="KB">KB/s</option><option value="MB">MB/s</option></select></div>
     </div>
-    <div class="fg" style="margin-bottom:16px">
-      <label>نوع مصرف (بهینه‌سازی)</label>
-      <select class="fs" id="el-usage" style="width:100%">
-        <option value="web">وب‌گردی، اینستاگرام و یوتوب</option>
-        <option value="download">دانلود و تلگرام</option>
-      </select>
-    </div>
+    
     <div class="cl"><i class="ti ti-info-circle"></i><span>برای حفظ انقضای فعلی، فیلد انقضا را صفر بگذارید.</span></div>
     <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
       <button class="btn btn-o" onclick="closeModal('modal-edit-link')">انصراف</button>
@@ -872,22 +869,15 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
       </div>
-      
-      <div class="cp-row">
-        <div class="cp-block" style="flex:1">
-          <div class="cp-block-label"><i class="ti ti-cpu"></i> نوع مصرف (بهینه‌سازی ترافیک)</div>
-          <select class="cp-input-full fs" id="nl-usage">
-            <option value="web" selected>وب‌گردی، اینستاگرام و یوتوب (پینگ پایین)</option>
-            <option value="download">دانلود و تلگرام (سرعت و پهنای باند بالا)</option>
-          </select>
-        </div>
-      </div>
 
       <div class="cp-block mb16">
-        <div class="cp-block-label"><i class="ti ti-world"></i> آدرس اتصال (Address / SNI)</div>
+        <div class="cp-block-label"><i class="ti ti-world"></i> آدرس و SNI (کاستوم/CDN)</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input class="cp-input-full" id="nl-address" placeholder="آدرس اتصال یا IP (خالی = پیش‌فرض)" style="flex:1">
+        </div>
         <div style="display:flex;gap:8px">
-          <input class="cp-input-full" id="nl-address" placeholder="خالی = دامنه پیش‌فرض سرور (برای اتصال با IP تمیز پر کنید)" style="flex:1">
-          <button class="btn btn-g" onclick="document.getElementById('nl-address').value=''" title="استفاده از دامنه پنل"><i class="ti ti-refresh"></i> پیش‌فرض</button>
+          <input class="cp-input-full" id="nl-host-sni" placeholder="Host و SNI (خالی = همان آدرس بالا)" style="flex:1">
+          <button class="btn btn-g" onclick="document.getElementById('nl-address').value='';document.getElementById('nl-host-sni').value=''" title="پاک کردن"><i class="ti ti-refresh"></i> پیش‌فرض</button>
         </div>
       </div>
 
@@ -1348,7 +1338,6 @@ async function loadLinks(){
       <div class="cfg-divider-v"></div>
       <div class="cfg-badges-col">
         ${protoBadge(l.protocol)}
-        ${l.usage_type === 'download' ? '<span class="cfg-sub-tag" style="color:var(--purple-t);background:var(--purple-bg);padding:2px 6px;border-radius:4px"><i class="ti ti-download"></i> دانلود</span>' : '<span class="cfg-sub-tag" style="color:var(--green-t);background:var(--green-bg);padding:2px 6px;border-radius:4px"><i class="ti ti-world"></i> وب‌گردی</span>'}
         <span class="cfg-sub-tag" title="پورت اتصال"><i class="ti ti-route"></i> :${l.port||443}</span>
         ${l.address ? `<span class="cfg-sub-tag" title="آدرس اختصاصی"><i class="ti ti-world"></i> ${esc(l.address)}</span>` : ''}
         ${l.sub_id&&allSubsList.find(s=>s.sub_id===l.sub_id)?`<span class="cfg-sub-tag"><i class="ti ti-folder"></i> ${esc(allSubsList.find(s=>s.sub_id===l.sub_id).name)}</span>`:''}
@@ -1356,7 +1345,12 @@ async function loadLinks(){
       <div class="cfg-divider-v"></div>
       <div class="cfg-actions">
         <button class="tog${allowed?' on':''}" onclick="toggleActive('${l.uuid}',${!l.active})" title="فعال/غیرفعال"></button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.vless_link)}').then(()=>toast('لینک کپی شد','ok'))" title="کپی لینک"><i class="ti ti-copy"></i></button>
+        ${(l.address || l.host_sni) ? `
+          <button class="btn btn-sm btn-g btn-icon" style="color:var(--accent);border-color:var(--accent)" onclick="navigator.clipboard.writeText('${esc(l.vless_link)}').then(()=>toast('لینک کاستوم کپی شد','ok'))" title="کپی لینک کاستوم"><i class="ti ti-copy"></i></button>
+          <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.vless_link_default)}').then(()=>toast('لینک سرور کپی شد','ok'))" title="کپی لینک اورجینال سرور"><i class="ti ti-server"></i></button>
+        ` : `
+          <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.vless_link)}').then(()=>toast('لینک کپی شد','ok'))" title="کپی لینک"><i class="ti ti-copy"></i></button>
+        `}
         <button class="btn btn-sm btn-g btn-icon" onclick="navigator.clipboard.writeText('${esc(l.sub_url)}').then(()=>toast('Sub کپی شد','ok'))" title="Sub URL"><i class="ti ti-rss"></i></button>
         <button class="btn btn-sm btn-g btn-icon" onclick="showQR('${esc(l.vless_link)}')" title="QR"><i class="ti ti-qrcode"></i></button>
         <button class="btn btn-sm btn-amber btn-icon" onclick="openEditLink('${l.uuid}')" title="ویرایش"><i class="ti ti-edit"></i></button>
@@ -1384,11 +1378,11 @@ async function createLink(){
   const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
   const speed_limit_unit=document.getElementById('nl-speed-unit').value;
   const address=document.getElementById('nl-address').value.trim();
-  const usage_type=document.getElementById('nl-usage').value;
+  const host_sni=document.getElementById('nl-host-sni').value.trim();
   try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,sub_id,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,usage_type})});
+    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,sub_id,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,host_sni})});
     if(!r.ok)throw new Error('failed');
-    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-address'].forEach(id=>document.getElementById(id).value='');
+    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-address','nl-host-sni'].forEach(id=>document.getElementById(id).value='');
     toast('کانفیگ ساخته شد ✓','ok');loadLinks();
   }catch(e){toast('خطا در ساخت','err')}
 }
@@ -1406,7 +1400,7 @@ function openEditLink(uuid){
   document.getElementById('el-port').value=l.port||443;
   document.getElementById('el-iplimit').value=l.ip_limit||0;
   document.getElementById('el-address').value=l.address||'';
-  document.getElementById('el-usage').value=l.usage_type||'web';
+  document.getElementById('el-host-sni').value=l.host_sni||'';
   if(!l.speed_limit_bytes){document.getElementById('el-speed').value='0';document.getElementById('el-speed-unit').value='MBIT';}
   else{document.getElementById('el-speed').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-speed-unit').value='MBIT';}
   openModal('modal-edit-link');
@@ -1425,8 +1419,8 @@ async function saveEditLink(){
   const speed_limit_value=Number(document.getElementById('el-speed').value)||0;
   const speed_limit_unit=document.getElementById('el-speed-unit').value;
   const address=document.getElementById('el-address').value.trim();
-  const usage_type=document.getElementById('el-usage').value;
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,usage_type};
+  const host_sni=document.getElementById('el-host-sni').value.trim();
+  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,address,host_sni};
   if(exp&&Number(exp)>0)body.expires_days=Number(exp);
   try{
     const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1517,7 +1511,9 @@ async function deleteSub(sub_id){
   if(!confirm('حذف این گروه؟ کانفیگ‌ها حذف نمی‌شوند.'))return;
   try{const r=await authF('/api/subs/'+sub_id,{method:'DELETE'});if(!r.ok)throw new Error();toast('گروه حذف شد ✓','ok');loadSubs();loadLinks();}catch(e){toast('خطا','err')}
 }
-let lmodalLinks=[],lmodalInSub=new Set();
+let lmodalLinks=[], lmodalInSub=new Set(), lmodalCustomLinks=new Set();
+function toggleCustomLink(uuid, checked){ if(checked) lmodalCustomLinks.add(uuid); else lmodalCustomLinks.delete(uuid); }
+
 async function openSubLinks(sub_id,name){
   currentSubId=sub_id;
   document.getElementById('modal-sub-name').textContent=name;
@@ -1530,6 +1526,7 @@ async function openSubLinks(sub_id,name){
     const {subs=[]}=await sr.json();
     const thisSub=subs.find(s=>s.sub_id===sub_id);
     lmodalInSub=new Set(thisSub?.link_ids||[]);
+    lmodalCustomLinks=new Set(thisSub?.custom_links||[]);
     lmodalLinks=links;
     renderLmodalList(links);
   }catch(e){toast('خطا در بارگذاری','err')}
@@ -1545,7 +1542,9 @@ function renderLmodalList(links){
       <div class="lrow-v2-avatar"><i class="ti ti-key"></i></div>
       <div class="lrow-v2-info">
         <div class="lrow-v2-name">${esc(l.label)}</div>
-        <div class="lrow-v2-meta"><i class="ti ti-database" style="font-size:10px"></i> ${fmtB(l.used_bytes)}</div>
+        <div class="lrow-v2-meta"><i class="ti ti-database" style="font-size:10px"></i> ${fmtB(l.used_bytes)}
+          ${(l.address || l.host_sni) ? `<label style="margin-right:12px;display:flex;align-items:center;gap:4px;color:var(--accent)" onclick="event.stopPropagation()"><input type="checkbox" onchange="toggleCustomLink('${l.uuid}', this.checked)" ${lmodalCustomLinks.has(l.uuid)?'checked':''}> با لینک کاستوم</label>` : ''}
+        </div>
       </div>
       <span class="lrow-v2-status ${on?'on':'off'}">${on?'فعال':'غیرفعال'}</span>
     </div>`;
@@ -1574,8 +1573,9 @@ function filterLmodal(q){
 async function saveSubLinks(){
   if(!currentSubId)return;
   const link_ids=[...lmodalInSub];
+  const custom_links=[...lmodalCustomLinks].filter(id => lmodalInSub.has(id));
   try{
-    const r=await authF('/api/subs/'+currentSubId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({link_ids})});
+    const r=await authF('/api/subs/'+currentSubId,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({link_ids, custom_links})});
     if(!r.ok)throw new Error();
     await Promise.all(lmodalLinks.map(l=>
       authF('/api/links/'+l.uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({sub_id:lmodalInSub.has(l.uuid)?currentSubId:null})})
@@ -2455,50 +2455,45 @@ def is_link_allowed(link: dict | None) -> bool:
 # ── Link Generation ───────────────────────────────────────────────────────────
 def generate_vless_link(
     uuid: str,
-    host: str,  # این متغیر به صورت خودکار دامنه همان سروری که باز کردید را می‌گیرد
+    host: str,
     remark: str = "Sadra",
     protocol: str = DEFAULT_PROTOCOL,
     fingerprint: str | None = None,
     alpn: str | None = None,
     port: int | None = None,
-    address: str | None = None
+    address: str | None = None,
+    host_sni: str | None = None,
+    force_default: bool = False
 ) -> str:
     fp = (fingerprint or DEFAULT_FINGERPRINT).strip() or DEFAULT_FINGERPRINT
     alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
     port_val = port or DEFAULT_PORT
     
-    # اگر آدرس دستی وارد شده باشد، هم برای اتصال و هم برای SNI و Host استفاده می‌شود
-    target_addr = address.strip() if address and address.strip() else host
-    sni_val = target_addr
-    host_val = target_addr
+    if force_default:
+        target_addr = host
+        sni_val = host
+        host_val = host
+    else:
+        target_addr = address.strip() if address and address.strip() else host
+        sni_val = host_sni.strip() if host_sni and host_sni.strip() else target_addr
+        host_val = sni_val
 
     if protocol == "vless-ws":
         path = f"/ws/{uuid}"
         params = {"encryption": "none", "security": "tls", "type": "ws", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
-    
     elif protocol == "httpupgrade":
         path = f"/upgrade/{uuid}"
         params = {"encryption": "none", "security": "tls", "type": "httpupgrade", "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
-    
     elif protocol == "xhttp-reality":
         path = f"/xhttp/reality/{uuid}"
         params = {
             "encryption": "mlkem768x25519plus.native.0rtt.n1a9RbIgBybbaQwHxJ8-giS2m2sZofWP-_p66B5m9RM",
             "security": "reality",
-            "type": "xhttp",
-            "mode": "auto",
-            "host": host_val,
-            "path": path,
-            "sni": sni_val,
-            "fp": fp,
-            "pbk": "Z2V6uOrJEwdR4WefmJJm03JLocLztknxETJMaQTO9DM",
-            "sid": uuid[:8],
+            "type": "xhttp", "mode": "auto", "host": host_val, "path": path, "sni": sni_val, "fp": fp,
+            "pbk": "Z2V6uOrJEwdR4WefmJJm03JLocLztknxETJMaQTO9DM", "sid": uuid[:8],
         }
-        if alpn_val:
-            params["alpn"] = alpn_val
-
+        if alpn_val: params["alpn"] = alpn_val
     else:
-        # xhttp-packet-up / xhttp-stream-up
         mode = protocol.replace("xhttp-", "")
         path = f"/xhttp-siz10/{mode}/{uuid}"
         params = {"encryption": "none", "security": "tls", "type": "xhttp", "mode": mode, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
@@ -2506,16 +2501,12 @@ def generate_vless_link(
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"vless://{uuid}@{target_addr}:{port_val}?{query}#{quote(remark)}"
 
-def vless_link_for_link(link: dict, uid: str, host: str) -> str:
-    proto = link.get("protocol", DEFAULT_PROTOCOL)
+def vless_link_for_link(link: dict, uid: str, host: str, force_default: bool = False) -> str:
     return generate_vless_link(
-        uid, host,
-        remark=f"{link.get('label','')}",
-        protocol=proto,
-        fingerprint=link.get("fingerprint"),
-        alpn=link.get("alpn"),
-        port=link.get("port"),
-        address=link.get("address")
+        uid, host, remark=f"{link.get('label','')}",
+        protocol=link.get("protocol", DEFAULT_PROTOCOL),
+        fingerprint=link.get("fingerprint"), alpn=link.get("alpn"), port=link.get("port"),
+        address=link.get("address"), host_sni=link.get("host_sni"), force_default=force_default
     )
 
 def parse_size_to_bytes(value: float, unit: str) -> int:
@@ -2566,8 +2557,7 @@ async def ensure_default_link():
                     "port": DEFAULT_PORT,
                     "ip_limit": 0,
                     "speed_limit_bytes": 0,
-                    "address": "",
-                    "usage_type": "web",
+                    "address": ""
                 }
                 asyncio.create_task(save_state(mutate=True))
 
@@ -2761,7 +2751,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
 
     uid = generate_uuid()
     address = (body.get("address") or "").strip()
-    usage_type = body.get("usage_type") or "web"
+    host_sni = (body.get("host_sni") or "").strip()
 
     async with LINKS_LOCK:
         LINKS[uid] = {
@@ -2781,7 +2771,7 @@ async def create_link(request: Request, _=Depends(require_auth)):
             "ip_limit": ip_limit,
             "speed_limit_bytes": speed_limit_bytes,
             "address": address,
-            "usage_type": usage_type
+            "host_sni": host_sni
         }
     
     sub_id = body.get("sub_id")
@@ -2809,6 +2799,7 @@ async def list_links(request: Request, _=Depends(require_auth)):
             **d,
             "expired": is_link_expired(d),
             "vless_link": vless_link_for_link(d, uid, host),
+            "vless_link_default": vless_link_for_link(d, uid, host, force_default=True),
             "sub_url": f"https://{host}/sub/{uid}",
             "connected_ips": len(unique_ips_for_uuid(uid)),
         })
@@ -2829,7 +2820,7 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         if "label" in body: link["label"] = str(body["label"])[:60]
         if "note" in body: link["note"] = str(body["note"])[:200]
         if "address" in body: link["address"] = str(body["address"]).strip()
-        if "usage_type" in body: link["usage_type"] = str(body["usage_type"]).strip()
+        if "host_sni" in body: link["host_sni"] = str(body["host_sni"]).strip()
         if "reset_usage" in body and body["reset_usage"]:
             link["used_bytes"] = 0
             log_activity("link", f"مصرف کانفیگ «{link['label']}» ریست شد", "info")
@@ -2919,6 +2910,7 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
         if sub_id not in SUBS: raise HTTPException(status_code=404)
         s = SUBS[sub_id]
         if "link_ids" in body: s["link_ids"] = list(body["link_ids"])
+        if "custom_links" in body: s["custom_links"] = list(body["custom_links"])
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
@@ -2970,7 +2962,11 @@ async def sub_group_subscription(uuid_key: str, request: Request):
         raise HTTPException(status_code=403, detail="wrong password")
     host = get_host(request)
     async with LINKS_LOCK:
-        lines = [vless_link_for_link(LINKS.get(lid), lid, host) for lid in sub.get("link_ids", []) if LINKS.get(lid) and is_link_allowed(LINKS.get(lid))]
+        lines = []
+        for lid in sub.get("link_ids", []):
+            if lk := LINKS.get(lid):
+                if is_link_allowed(lk):
+                    lines.append(vless_link_for_link(lk, lid, host, force_default=lid not in sub.get("custom_links", [])))
     
     raw_text = "\n".join(lines)
     
@@ -3057,37 +3053,15 @@ async def start_time_loop():
     asyncio.create_task(update_time_loop())
 
 # ── WS / Core Tunnels (Ultra Optimized) ───────────────────────────────────────
+RELAY_BUF = 65536  # بافر استاندارد 64KB برای استریم به شدت روان (جلوگیری از گیرکردن ویدیوها)
+FLUSH_THRESH = 262144 # رفرش ترافیک هر 256KB برای کاهش فشار پردازنده
 
-def get_buffer_config(uid: str):
-    """انتخاب داینامیک سایز بافر بر اساس نوع مصرف کانفیگ"""
-    link = LINKS.get(uid, {})
-    usage = link.get("usage_type", "web")
-    if usage == "download":
-        return {
-            "relay_buf": 262144,      # 256KB Buffer
-            "flush_thresh": 1048576,  # 1MB Traffic Update
-            "sock_buf": 4194304,      # 4MB TCP Window (Max Speed)
-            "q_size": 4096            # XHTTP Queue
-        }
-    else: # web
-        return {
-            "relay_buf": 65536,       # 64KB Buffer (Low Latency)
-            "flush_thresh": 262144,   # 256KB Traffic Update
-            "sock_buf": 0,            # OS Default (Smooth stream)
-            "q_size": 1024            # XHTTP Queue
-        }
-
-def _tune_socket(writer: asyncio.StreamWriter, sock_buf: int = 0):
-    """تنظیمات سوکت داینامیک بر اساس نیاز"""
+def _tune_socket(writer: asyncio.StreamWriter):
+    """تنظیمات سوکت برای کاهش پینگ و جلوگیری از تاخیر بسته‌ها (TCP_NODELAY)"""
     try:
         sock = writer.transport.get_extra_info("socket")
         if sock:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            if sock_buf > 0:
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, sock_buf)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, sock_buf)
-            if hasattr(socket, "TCP_QUICKACK"):
-                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_QUICKACK, 1)
     except Exception:
         pass
 
@@ -3114,7 +3088,6 @@ async def check_and_use(uid: str, n: int) -> bool:
 
 async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: str, uid: str):
     conn_info = connections.get(conn_id)
-    buf_cfg = get_buffer_config(uid)
     local_bytes = 0
     try:
         while True:
@@ -3126,7 +3099,7 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= buf_cfg["flush_thresh"]: 
+            if local_bytes >= FLUSH_THRESH: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3139,7 +3112,7 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
             stats["total_requests"] += 1
             writer.write(data)
             
-            if writer.transport.get_write_buffer_size() > buf_cfg["flush_thresh"]: 
+            if writer.transport.get_write_buffer_size() > RELAY_BUF: 
                 await writer.drain()
     except Exception: pass
     finally:
@@ -3152,17 +3125,16 @@ async def relay_ws_to_tcp(ws: WebSocket, writer: asyncio.StreamWriter, conn_id: 
 async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: str, uid: str):
     first = True
     conn_info = connections.get(conn_id)
-    buf_cfg = get_buffer_config(uid)
     local_bytes = 0
     try:
         while True:
-            data = await reader.read(buf_cfg["relay_buf"])
+            data = await reader.read(RELAY_BUF)
             if not data: break
             
             size = len(data)
             local_bytes += size
             
-            if local_bytes >= buf_cfg["flush_thresh"]: 
+            if local_bytes >= FLUSH_THRESH: 
                 if not await check_and_use(uid, local_bytes):
                     await ws.close(code=1008); break
                 if conn_info: conn_info["bytes"] += local_bytes
@@ -3175,8 +3147,8 @@ async def relay_tcp_to_ws(ws: WebSocket, reader: asyncio.StreamReader, conn_id: 
             await ws.send_bytes((b"\x00\x00" + data) if first else data)
             first = False
             
-            if buf_cfg["sock_buf"] == 0:
-                await asyncio.sleep(0)
+            # خط جادویی: اجازه می‌دهد رویدادهای زنده نگه‌داشتنِ WebSocket نفس بکشند
+            await asyncio.sleep(0)
             
     except Exception: pass
     finally:
@@ -3214,7 +3186,7 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
         
         reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
         
-        _tune_socket(writer, get_buffer_config(uuid)["sock_buf"])
+        _tune_socket(writer)
         
         if payload:
             writer.write(payload)
@@ -3237,10 +3209,10 @@ async def websocket_tunnel(ws: WebSocket, uuid: str):
 router = APIRouter()
 xhttp_sessions: dict = {}
 
-async def _open_tcp_from_header(first_chunk: bytes, uid: str):
+async def _open_tcp_from_header(first_chunk: bytes):
     command, address, port, payload = await parse_vless_header(first_chunk)
     reader, writer = await asyncio.wait_for(asyncio.open_connection(address, port), timeout=10.0)
-    _tune_socket(writer, get_buffer_config(uid)["sock_buf"])
+    _tune_socket(writer)
     if payload:
         writer.write(payload)
         await writer.drain()
@@ -3265,15 +3237,14 @@ async def _pump_tcp_to_queue(session_id: str, uuid: str, reader: asyncio.StreamR
     sess = xhttp_sessions.get(session_id)
     conn_info = connections.get(sess["conn_id"]) if sess else None
     local_bytes = 0
-    buf_cfg = get_buffer_config(uuid)
     try:
         while True:
-            data = await reader.read(buf_cfg["relay_buf"])
+            data = await reader.read(RELAY_BUF)
             if not data: break
             
             size = len(data)
             local_bytes += size
-            if local_bytes >= buf_cfg["flush_thresh"]:
+            if local_bytes >= FLUSH_THRESH:
                 if not await check_and_use(uuid, local_bytes): break
                 if conn_info: conn_info["bytes"] += local_bytes
                 local_bytes = 0
@@ -3298,7 +3269,7 @@ async def _get_or_create_xhttp(uuid: str, mode: str, session_id: str, ip: str) -
         if not is_ip_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="ip limit")
         conn_id = secrets.token_urlsafe(6)
         connections[conn_id] = {"uuid": uuid, "ip": ip, "connected_at": datetime.now().isoformat(), "bytes": 0, "transport": f"xhttp-{mode}"}
-        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=get_buffer_config(uuid)["q_size"]), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
+        sess = {"uuid": uuid, "mode": mode, "writer": None, "down_q": asyncio.Queue(maxsize=1024), "conn_id": conn_id, "closed": False, "seq_buf": {}, "next_seq": 0}
         xhttp_sessions[session_id] = sess
         return sess
 
@@ -3310,7 +3281,6 @@ def _downstream_gen(sess: dict, session_id: str):
                 if chunk is None: break
                 yield chunk
         finally: 
-            # حذف سریع و فوری کانکشن به محض بستن کلاینت
             asyncio.create_task(_teardown_xhttp(session_id))
     return gen()
 
@@ -3343,7 +3313,7 @@ async def packet_up_upload(uuid: str, session_id: str, seq: int, request: Reques
         if sess["writer"] is None:
             if seq != 0:
                 sess["seq_buf"][seq] = body; return {"ok": True}
-            reader, writer = await _open_tcp_from_header(body, uuid)
+            reader, writer = await _open_tcp_from_header(body)
             sess["writer"] = writer
             sess["downlink_task"] = asyncio.create_task(_pump_tcp_to_queue(session_id, uuid, reader, sess["down_q"]))
             sess["next_seq"] = 1
@@ -3373,7 +3343,6 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
     
     conn_info = connections.get(sess["conn_id"])
     local_bytes = 0
-    buf_cfg = get_buffer_config(uuid)
     
     try:
         async for chunk in request.stream():
@@ -3381,7 +3350,7 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
             size = len(chunk)
             local_bytes += size
             
-            if local_bytes >= buf_cfg["flush_thresh"]:
+            if local_bytes >= FLUSH_THRESH:
                 if not await check_and_use(uuid, local_bytes): raise HTTPException(status_code=403)
                 if conn_info: conn_info["bytes"] += local_bytes
                 local_bytes = 0
@@ -3391,13 +3360,13 @@ async def stream_up_upload(uuid: str, session_id: str, request: Request):
                 if rate > 0: await _get_bucket(uuid, rate).consume(size)
 
             if sess["writer"] is None:
-                reader, writer = await _open_tcp_from_header(chunk, uuid)
+                reader, writer = await _open_tcp_from_header(chunk)
                 sess["writer"] = writer
                 sess["downlink_task"] = asyncio.create_task(_pump_tcp_to_queue(session_id, uuid, reader, sess["down_q"]))
                 continue
             
             sess["writer"].write(chunk)
-            if sess["writer"].transport.get_write_buffer_size() > buf_cfg["flush_thresh"]:
+            if sess["writer"].transport.get_write_buffer_size() > FLUSH_THRESH:
                 await sess["writer"].drain()
     except Exception:
         await _teardown_xhttp(session_id)
@@ -3445,7 +3414,7 @@ async def public_sub_data(uuid_key: str, request: Request):
             "protocol": link.get("protocol", DEFAULT_PROTOCOL),
             "used_fmt": fmt_bytes(link.get("used_bytes", 0)),
             "limit_bytes": link.get("limit_bytes", 0),
-            "vless_link": vless_link_for_link(link, lid, host)
+            "vless_link": vless_link_for_link(link, lid, host, force_default=lid not in sub.get("custom_links", []))
         })
 
     return {

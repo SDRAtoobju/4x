@@ -1281,12 +1281,12 @@ function protoBadge(p){
   const v=m[p]||m['vless-ws'];
   return `<span class="proto-chip ${v[1]}">${v[0]}</span>`;
 }
-async function checkAuth(){try{const r=await fetch('/api/me');const d=await r.json();if(!d.authenticated)location.href='/login';}catch(e){location.href='/login'}}
-async function logout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/login'}
+async function checkAuth(){try{const r=await fetch('/api/me');const d=await r.json();if(!d.authenticated)location.href='/sadra191388191378';}catch(e){location.href='/sadra191388191378'}}
+async function logout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/sadra191388191378'}
 document.getElementById('logout-btn').addEventListener('click',logout);
 async function authF(url,opts={}){
   const r=await fetch(url,opts);
-  if(r.status===401){location.href='/login';throw new Error('unauthorized')}
+  if(r.status===401){location.href='/sadra191388191378';throw new Error('unauthorized')}
   return r;
 }
 function selectProto(val,el){
@@ -3135,7 +3135,9 @@ async def update_cf_sync_settings(request: Request, _=Depends(require_auth)):
 
 @app.get("/")
 async def root():
-    return {"service": "Sadra Sadra", "version": "9.5", "status": "active"}
+    # صفحه فیک خطای ۴۰۴ برای فریب دادن ربات‌های فیلترینگ
+    fake_404 = "<html><head><title>404 Not Found</title></head><body bgcolor='white'><center><h1>404 Not Found</h1></center><hr><center>nginx</center></body></html>"
+    return Response(content=fake_404, status_code=404, media_type="text/html")
 
 @app.post("/api/login")
 async def api_login(request: Request):
@@ -3941,7 +3943,7 @@ async def public_sub_data(uuid_key: str, request: Request):
         "links": links_out,
     }
 
-@app.get("/login", response_class=HTMLResponse)
+@app.get("/sadra191388191378", response_class=HTMLResponse)
 async def login_page(request: Request):
     if await is_valid_session(request.cookies.get(SESSION_COOKIE)):
         return RedirectResponse(url="/dashboard")
@@ -3950,7 +3952,7 @@ async def login_page(request: Request):
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     if not await is_valid_session(request.cookies.get(SESSION_COOKIE)):
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url="/sadra191388191378")
     await ensure_default_link()
     return HTMLResponse(content=DASHBOARD_HTML)
 

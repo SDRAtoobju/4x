@@ -701,18 +701,59 @@ a{color:inherit;text-decoration:none}
         <label><i class="ti ti-align-left"></i> توضیحات (اختیاری)</label>
         <input class="modal-v2-input" id="ns-desc" placeholder="توضیح کوتاه درباره این گروه">
       </div>
+      
       <div class="modal-v2-field">
-        <label><i class="ti ti-world"></i> دامنه لینک ساب (اختیاری)</label>
-        <input class="modal-v2-input" id="ns-domain" placeholder="مثلاً: https://sub.domain.com">
+        <label><i class="ti ti-world"></i> لینک‌های ساب کاستوم (دامنه/Worker/Pages)</label>
+        <div id="ns-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
+        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('ns')"><i class="ti ti-plus"></i> افزودن لینک کاستوم</button>
       </div>
+
       <div class="modal-v2-field" style="margin-bottom:0">
         <label><i class="ti ti-lock"></i> رمز صفحه پابلیک (اختیاری)</label>
         <input class="modal-v2-input" id="ns-pw" type="password" placeholder="خالی بگذارید = بدون رمز">
       </div>
-      <div class="cl" style="margin-top:14px"><i class="ti ti-info-circle"></i><span>صفحه پابلیک این گروه با یک لینک منحصر‌به‌فرد در اینترنت در دسترس خواهد بود.</span></div>
       <div class="modal-v2-footer">
         <button class="btn btn-o" onclick="closeModal('modal-create-sub')" style="flex:.6">انصراف</button>
         <button class="btn btn-pur" onclick="createSub()"><i class="ti ti-folder-plus"></i> ساخت گروه</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="modal-edit-sub">
+  <div class="modal-v2">
+    <div class="modal-v2-head" style="background:linear-gradient(155deg,rgba(16,185,129,.14) 0%,transparent 65%);">
+      <button class="modal-v2-close" onclick="closeModal('modal-edit-sub')"><i class="ti ti-x"></i></button>
+      <div class="modal-v2-icon" style="background:linear-gradient(135deg,var(--green),#0D9668);box-shadow:0 8px 18px rgba(16,185,129,.2);"><i class="ti ti-edit"></i></div>
+      <div class="modal-v2-title">ویرایش گروه ساب</div>
+      <div class="modal-v2-sub">تغییر نام، توضیحات و لینک‌های کاستوم</div>
+    </div>
+    <div class="modal-v2-body">
+      <input type="hidden" id="es-id">
+      <div class="modal-v2-field">
+        <label><i class="ti ti-tag"></i> نام گروه</label>
+        <input class="modal-v2-input" id="es-name" placeholder="مثلاً: کانال تلگرام">
+      </div>
+      <div class="modal-v2-field">
+        <label><i class="ti ti-align-left"></i> توضیحات (اختیاری)</label>
+        <input class="modal-v2-input" id="es-desc" placeholder="توضیح کوتاه درباره این گروه">
+      </div>
+      
+      <div class="modal-v2-field">
+        <label><i class="ti ti-world"></i> لینک‌های ساب کاستوم (دامنه/Worker/Pages)</label>
+        <div id="es-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
+        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('es')"><i class="ti ti-plus"></i> افزودن لینک کاستوم</button>
+      </div>
+
+      <div class="modal-v2-field" style="margin-bottom:0">
+        <label><i class="ti ti-lock"></i> رمز جدید (اختیاری)</label>
+        <input class="modal-v2-input" id="es-pw" type="password" placeholder="برای عدم تغییر، خالی بگذارید">
+        <label style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:10px;text-transform:none">
+            <input type="checkbox" id="es-remove-pw"> حذف رمز فعلی (عمومی شدن گروه)
+        </label>
+      </div>
+      <div class="modal-v2-footer">
+        <button class="btn btn-o" onclick="closeModal('modal-edit-sub')" style="flex:.6">انصراف</button>
+        <button class="btn btn-p" onclick="saveEditSub()" style="background:var(--green);box-shadow:0 6px 18px rgba(16,185,129,.2)"><i class="ti ti-check"></i> ذخیره تغییرات</button>
       </div>
     </div>
   </div>
@@ -1493,8 +1534,8 @@ function renderSubsGrid(subs){
       </div>
       <div class="sub-card-bottom">
         <button class="btn btn-sm btn-g" onclick="openSubLinks('${esc(s.sub_id)}','${esc(s.name)}')"><i class="ti ti-link-plus"></i> کانفیگ‌ها</button>
-        <button class="btn btn-sm btn-o" onclick="navigator.clipboard.writeText('${esc(s.sub_url)}').then(()=>toast('لینک ساب کپی شد','ok'))"><i class="ti ti-rss"></i> ساب</button>
-        <button class="btn btn-sm btn-g btn-icon" onclick="showQR('${esc(s.sub_url)}')" title="QR"><i class="ti ti-qrcode"></i></button>
+        <button class="btn btn-sm btn-p" onclick="openSubVariations('${esc(s.sub_id)}')"><i class="ti ti-layers-linked"></i> لینک‌ها</button>
+        <button class="btn btn-sm btn-amber" onclick="openEditSub('${esc(s.sub_id)}')"><i class="ti ti-edit"></i></button>
         <button class="btn btn-sm btn-d btn-icon" onclick="deleteSub('${esc(s.sub_id)}')" title="حذف"><i class="ti ti-trash"></i></button>
       </div>
     </div>
@@ -1505,18 +1546,119 @@ function filterSubs(q){
   if(!q){renderSubsGrid(allSubsRaw);return}
   renderSubsGrid(allSubsRaw.filter(s=>s.name.toLowerCase().includes(q)||(s.desc||'').toLowerCase().includes(q)));
 }
+function addSubCustomField(prefix, name='', domain='') {
+    const container = document.getElementById(`${prefix}-customs-list`);
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.1);padding:6px 8px;border-radius:10px;border:1px solid var(--card-b)';
+    div.innerHTML = `
+        <input class="fi ${prefix}-c-name" placeholder="نام (مثل: کلودفلر)" style="width:35%" value="${esc(name)}">
+        <input class="fi ${prefix}-c-domain" placeholder="دامنه (مثل: sub.site.com)" style="width:65%;direction:ltr" value="${esc(domain)}">
+        <button class="btn btn-d btn-icon" style="flex-shrink:0;width:30px;height:30px;padding:0" onclick="this.parentElement.remove()"><i class="ti ti-trash"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+function getSubCustomFields(prefix) {
+    const customs = [];
+    document.querySelectorAll(`#${prefix}-customs-list > div`).forEach(row => {
+        const name = row.querySelector(`.${prefix}-c-name`).value.trim();
+        const domain = row.querySelector(`.${prefix}-c-domain`).value.trim();
+        if (name || domain) customs.push({name: name || 'کاستوم', domain: domain});
+    });
+    return customs;
+}
+
 async function createSub(){
-  const name=document.getElementById('ns-name').value.trim()||'گروه جدید';
-  const desc=document.getElementById('ns-desc').value.trim();
-  const domain=document.getElementById('ns-domain').value.trim();
-  const pw=document.getElementById('ns-pw').value;
+  const name = document.getElementById('ns-name').value.trim() || 'گروه جدید';
+  const desc = document.getElementById('ns-desc').value.trim();
+  const pw = document.getElementById('ns-pw').value;
+  const customs = getSubCustomFields('ns');
+  
   try{
-    const r=await authF('/api/subs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,desc,password:pw, custom_domain:domain})});
+    const r=await authF('/api/subs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name, desc, password:pw, customs})});
     if(!r.ok)throw new Error('failed');
-    ['ns-name','ns-desc','ns-domain','ns-pw'].forEach(id=>document.getElementById(id).value='');
+    ['ns-name','ns-desc','ns-pw'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('ns-customs-list').innerHTML = '';
     closeModal('modal-create-sub');
-    toast('گروه ساخته شد ✓','ok');loadSubs();
+    toast('گروه ساخته شد ✓','ok');
+    loadSubs();
   }catch(e){toast('خطا در ساخت گروه','err')}
+}
+
+function openEditSub(sub_id) {
+    const s = allSubsRaw.find(x => x.sub_id === sub_id);
+    if (!s) return;
+    document.getElementById('es-id').value = sub_id;
+    document.getElementById('es-name').value = s.name;
+    document.getElementById('es-desc').value = s.desc || '';
+    document.getElementById('es-pw').value = '';
+    document.getElementById('es-remove-pw').checked = false;
+    
+    const list = document.getElementById('es-customs-list');
+    list.innerHTML = '';
+    (s.customs || []).forEach(c => addSubCustomField('es', c.name, c.domain));
+    
+    openModal('modal-edit-sub');
+}
+
+async function saveEditSub() {
+    const sub_id = document.getElementById('es-id').value;
+    const name = document.getElementById('es-name').value.trim();
+    const desc = document.getElementById('es-desc').value.trim();
+    const pw = document.getElementById('es-pw').value.trim();
+    const removePw = document.getElementById('es-remove-pw').checked;
+    const customs = getSubCustomFields('es');
+    
+    const body = {name, desc, customs};
+    if (pw) body.password = pw;
+    if (removePw) body.remove_password = true;
+
+    try{
+        const r = await authF('/api/subs/'+sub_id, {method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(!r.ok)throw new Error();
+        closeModal('modal-edit-sub');
+        toast('تغییرات گروه ذخیره شد ✓','ok');
+        loadSubs();
+    }catch(e){toast('خطا در ویرایش','err')}
+}
+
+function openSubVariations(sub_id) {
+    const s = allSubsRaw.find(x => x.sub_id === sub_id);
+    if (!s) return;
+    
+    const list = document.getElementById('variations-list');
+    list.innerHTML = s.variations.map(v => `
+        <div style="background:var(--accent-d);border:1px solid var(--card-b);padding:14px;border-radius:12px;display:flex;flex-direction:column;gap:10px;margin-bottom:8px">
+            <div style="font-weight:800;font-size:13.5px;color:var(--t1)"><i class="ti ti-world"></i> ${esc(v.name)}</div>
+            
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,0.25);padding:8px 12px;border-radius:9px">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:10px;color:var(--t3);margin-bottom:3px;font-weight:700">لینک سابسکریپشن (Sub)</div>
+                    <div style="font-size:11px;color:var(--accent);font-family:ui-monospace,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" dir="ltr">${esc(v.sub_url)}</div>
+                </div>
+                <div style="display:flex;gap:4px">
+                    <button class="btn btn-sm btn-p btn-icon" onclick="navigator.clipboard.writeText('${esc(v.sub_url)}').then(()=>toast('لینک ساب کپی شد','ok'))"><i class="ti ti-copy"></i></button>
+                    <button class="btn btn-sm btn-o btn-icon" onclick="showQR('${esc(s.name)} - ${esc(v.name)}', '${esc(v.sub_url)}')"><i class="ti ti-qrcode"></i></button>
+                </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,0.25);padding:8px 12px;border-radius:9px">
+                <div style="flex:1;min-width:0">
+                    <div style="font-size:10px;color:var(--t3);margin-bottom:3px;font-weight:700">صفحه پابلیک اختصاصی (Pub)</div>
+                    <div style="font-size:11px;color:var(--green-t);font-family:ui-monospace,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" dir="ltr">${esc(v.public_url)}</div>
+                </div>
+                <div style="display:flex;gap:4px">
+                    <button class="btn btn-sm btn-g btn-icon" style="background:var(--green);color:#000;border:none" onclick="navigator.clipboard.writeText('${esc(v.public_url)}').then(()=>toast('لینک پابلیک کپی شد','ok'))"><i class="ti ti-copy"></i></button>
+                    <button class="btn btn-sm btn-o btn-icon" onclick="window.open('${esc(v.public_url)}')"><i class="ti ti-external-link"></i></button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    const titleEl = document.querySelector('#modal-variations .modal-title');
+    if(titleEl) titleEl.innerHTML = `<i class="ti ti-layers-linked"></i> لینک‌های گروه <span style="color:var(--accent)">${esc(s.name)}</span>`;
+    
+    openModal('modal-variations');
 }
 async function deleteSub(sub_id){
   if(!confirm('حذف این گروه؟ کانفیگ‌ها حذف نمی‌شوند.'))return;
@@ -2377,6 +2519,10 @@ async def load_state():
                 if addr or sni:
                     l["customs"] = [{"name": "کاستوم قدیمی", "address": addr, "host_sni": sni}]
         for sid, s in SUBS.items():
+            if "custom_domain" in s:
+                cd = s.pop("custom_domain", "")
+                if cd and "customs" not in s:
+                    s["customs"] = [{"name": "دامنه قدیمی", "domain": cd}]
             if "custom_links" in s:
                 old_customs = set(s.pop("custom_links", []))
                 new_ids = []
@@ -2961,19 +3107,20 @@ async def create_sub(request: Request, _=Depends(require_auth)):
     name = (body.get("name") or "گروه جدید").strip()[:60]
     desc = (body.get("desc") or "").strip()[:200]
     password = (body.get("password") or "").strip()
-    custom_domain = (body.get("custom_domain") or "").strip()
+    customs = body.get("customs", [])
+    
     sub_id = generate_uuid()
     uuid_key = secrets.token_urlsafe(16)
     async with SUBS_LOCK:
-        SUBS[sub_id] = {"name": name, "desc": desc, "password_hash": hash_password(password) if password else None, "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), "link_ids": [], "custom_domain": custom_domain}
+        SUBS[sub_id] = {
+            "name": name, "desc": desc, 
+            "password_hash": hash_password(password) if password else None, 
+            "uuid_key": uuid_key, "created_at": datetime.now().isoformat(), 
+            "link_ids": [], "customs": customs
+        }
     asyncio.create_task(save_state(mutate=True))
     log_activity("sub", f"گروه «{name}» ساخته شد", "ok")
-    host = get_host(request)
-    return {
-        "sub_id": sub_id, **SUBS[sub_id],
-        "public_url": format_sub_url(custom_domain, f"/p/{uuid_key}", host),
-        "sub_url": format_sub_url(custom_domain, f"/sub-group/{uuid_key}", host)
-    }
+    return {"ok": True}
 
 @app.get("/api/subs")
 async def list_subs(request: Request, _=Depends(require_auth)):
@@ -2983,12 +3130,27 @@ async def list_subs(request: Request, _=Depends(require_auth)):
     result = []
     for sid, s in snap_subs.items():
         link_ids = s.get("link_ids", [])
-        active_count = sum(1 for lid in link_ids if is_link_allowed(snap_links.get(lid)))
-        total_used = sum(snap_links[lid].get("used_bytes", 0) for lid in link_ids if lid in snap_links)
+        active_count = sum(1 for lid in link_ids if is_link_allowed(snap_links.get(lid.split("#")[0])))
+        total_used = sum(snap_links[lid.split("#")[0]].get("used_bytes", 0) for lid in link_ids if lid.split("#")[0] in snap_links)
+        
+        uuid_key = s["uuid_key"]
+        base_path = f"/sub-group/{uuid_key}"
+        pub_path = f"/p/{uuid_key}"
+
+        variations = [{"id": sid, "name": "پیش‌فرض (آی‌پی سرور)", "sub_url": format_sub_url("", base_path, host), "public_url": format_sub_url("", pub_path, host)}]
+        for i, c in enumerate(s.get("customs", [])):
+            variations.append({
+                "id": f"{sid}#{i}",
+                "name": c.get("name", f"Custom {i+1}"),
+                "sub_url": format_sub_url(c.get("domain", ""), base_path, host),
+                "public_url": format_sub_url(c.get("domain", ""), pub_path, host)
+            })
+
         result.append({
             "sub_id": sid, **s, "password_hash": None, "has_password": s.get("password_hash") is not None,
             "links_count": len(link_ids), "active_count": active_count, "total_used_fmt": fmt_bytes(total_used),
-            "public_url": f"https://{host}/p/{s['uuid_key']}", "sub_url": f"https://{host}/sub-group/{s['uuid_key']}"
+            "public_url": variations[0]["public_url"], "sub_url": variations[0]["sub_url"],
+            "variations": variations
         })
     result.sort(key=lambda x: x["created_at"], reverse=True)
     return {"subs": result}
@@ -2999,8 +3161,14 @@ async def update_sub(sub_id: str, request: Request, _=Depends(require_auth)):
     async with SUBS_LOCK:
         if sub_id not in SUBS: raise HTTPException(status_code=404)
         s = SUBS[sub_id]
+        if "name" in body: s["name"] = str(body["name"]).strip()[:60]
+        if "desc" in body: s["desc"] = str(body["desc"]).strip()[:200]
+        if "customs" in body: s["customs"] = body["customs"]
+        if "password" in body and str(body["password"]).strip() != "":
+            s["password_hash"] = hash_password(str(body["password"]).strip())
+        if body.get("remove_password"):
+            s["password_hash"] = None
         if "link_ids" in body: s["link_ids"] = list(body["link_ids"])
-        if "custom_links" in body: s["custom_links"] = list(body["custom_links"])
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 

@@ -2552,13 +2552,16 @@ def _load_or_create_secret() -> str:
         logger.warning(f"Could not persist SECRET_KEY, sessions may reset on restart: {e}")
         return secrets.token_urlsafe(32)
 
-CONFIG = {
-    "port": int(os.environ.get("PORT", 8000)),
-    "secret": _load_or_create_secret(),
-    "host": os.environ.get("RAILWAY_PUBLIC_DOMAIN", "localhost"),
-}
+# فریب دادن ربات‌ها برای تمام آدرس‌های نامعتبر (404 Not Found و 405 Method Not Allowed)
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    fake_404 = "<html><head><title>404 Not Found</title></head><body bgcolor='white'><center><h1>404 Not Found</h1></center><hr><center>nginx</center></body></html>"
+    return Response(content=fake_404, status_code=404, media_type="text/html")
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+@app.exception_handler(405)
+async def custom_405_handler(request: Request, exc):
+    fake_404 = "<html><head><title>404 Not Found</title></head><body bgcolor='white'><center><h1>404 Not Found</h1></center><hr><center>nginx</center></body></html>"
+    return Response(content=fake_404, status_code=404, media_type="text/html")
 
 # ── State Management ──────────────────────────────────────────────────────────
 # ── Cloudflare KV Config (Smart & Dynamic) ──────────────────────────────────
@@ -3951,8 +3954,11 @@ async def login_page(request: Request):
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
+    # اگر سشن معتبر نبود، به جای ریدایرکت، وانمود میکنیم این صفحه اصلا وجود ندارد!
     if not await is_valid_session(request.cookies.get(SESSION_COOKIE)):
-        return RedirectResponse(url="/sadra191388191378")
+        fake_404 = "<html><head><title>404 Not Found</title></head><body bgcolor='white'><center><h1>404 Not Found</h1></center><hr><center>nginx</center></body></html>"
+        return Response(content=fake_404, status_code=404, media_type="text/html")
+        
     await ensure_default_link()
     return HTMLResponse(content=DASHBOARD_HTML)
 

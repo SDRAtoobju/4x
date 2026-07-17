@@ -3020,6 +3020,8 @@ async def manual_cf_upload(_=Depends(require_auth)):
     data = {
         "links": dict(LINKS),
         "subs": dict(SUBS),
+        "saved_customs": SAVED_CUSTOMS,
+        "saved_sub_customs": SAVED_SUB_CUSTOMS,
         "password_hash": AUTH["password_hash"],
         "secret": CONFIG["secret"],
         "cf_sync": CF_SYNC_CONFIG,

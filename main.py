@@ -766,10 +766,16 @@ a{color:inherit;text-decoration:none}
     <div class="fg" style="margin-bottom:13px"><label>عنوان</label><input class="fi" id="el-label" style="width:100%"></div>
     <div class="fg" style="margin-bottom:13px"><label>دامنه لینک ساب (اختیاری)</label><input class="fi" id="el-sub-domain" placeholder="مثلاً https://sub.domain.com" style="width:100%"></div>
     
-    <div class="fg" style="margin-bottom:13px">
+    <div class="fg" style="margin-bottom:13px;width:100%">
+      <label>گروه‌های ساب (تیک بزنید)</label>
+      <div id="el-subs-list" style="max-height:110px;overflow-y:auto;background:rgba(0,0,0,.15);border:1px solid var(--card-b);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:5px;width:100%"></div>
+    </div>
+
+    <div class="fg" style="margin-bottom:13px;width:100%">
       <label>کانفیگ‌های کاستوم (CDN / IP)</label>
-      <div id="el-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
-      <button class="btn btn-sm btn-g" type="button" onclick="addCustomField('el')"><i class="ti ti-plus"></i> افزودن کاستوم جدید</button>
+      <div id="el-saved-customs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;width:100%"></div>
+      <div id="el-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;width:100%"></div>
+      <button class="btn btn-sm btn-g" type="button" onclick="addCustomField('el')"><i class="ti ti-plus"></i> ایجاد کاستوم جدید دستی</button>
     </div>
 
     <div class="form-row" style="margin-bottom:13px">
@@ -916,8 +922,10 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
         <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-folders"></i> گروه ساب و انقضا</div>
-          <select class="cp-input-full fs" id="nl-sub"><option value="">— بدون گروه —</option></select>
+          <div class="cp-block-label"><i class="ti ti-folders"></i> گروه‌های ساب (چند انتخاب)</div>
+          <div id="nl-subs-list" style="max-height:100px;overflow-y:auto;background:rgba(0,0,0,.15);border:1px solid var(--card-b);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
+             <!-- لیست ساب‌ها اینجا لود میشه -->
+          </div>
           <div class="cp-mini-row">
             <input class="cp-input-full" id="nl-exp" type="number" min="0" step="1" placeholder="انقضا (روز) · 0 = نامحدود">
           </div>
@@ -925,9 +933,14 @@ a{color:inherit;text-decoration:none}
       </div>
 
       <div class="cp-block mb16">
-        <div class="cp-block-label"><i class="ti ti-world"></i> کانفیگ‌های کاستوم (CDN / IP)</div>
+        <div class="cp-block-label" style="display:flex;justify-content:space-between">
+          <span><i class="ti ti-world"></i> کانفیگ‌های کاستوم (CDN / IP)</span>
+        </div>
+        <!-- نوار کاستوم‌های ذخیره شده -->
+        <div id="nl-saved-customs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:8px"></div>
+        
         <div id="nl-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
-        <button class="btn btn-sm btn-g" type="button" onclick="addCustomField('nl')"><i class="ti ti-plus"></i> افزودن کاستوم جدید</button>
+        <button class="btn btn-sm btn-g" type="button" onclick="addCustomField('nl')"><i class="ti ti-plus"></i> ایجاد کاستوم جدید دستی</button>
       </div>
 
       <div class="cp-block mb16">
@@ -1350,10 +1363,20 @@ async function loadLinks(){
     const {links=[]}=await lr.json();
     const {subs=[]}=await sr.json();
     allSubsList=subs;allLinksList=links;
-    const nlSub=document.getElementById('nl-sub');
-    const currentSubVal = nlSub.value; // ذخیره انتخاب فعلی کاربر در حین رفرش
-    nlSub.innerHTML='<option value="">— بدون گروه —</option>'+subs.map(s=>`<option value="${esc(s.sub_id)}">${esc(s.name)}</option>`).join('');
-    nlSub.value = currentSubVal; // برگرداندن انتخاب کاربر
+    const renderSubCheckboxes = (containerId, subsList, checkedSet = new Set()) => {
+        const container = document.getElementById(containerId);
+        if(!container) return;
+        const currentlyChecked = new Set([...container.querySelectorAll('input:checked')].map(cb => cb.value));
+        const finalChecked = checkedSet.size > 0 ? checkedSet : currentlyChecked;
+        
+        container.innerHTML = subsList.map(s => `
+            <label style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--t1);cursor:pointer;padding:6px;border-radius:8px;background:rgba(255,215,0,0.05);border:1px solid transparent;transition:.15s" onmouseover="this.style.borderColor='var(--card-b)'" onmouseout="this.style.borderColor='transparent'">
+                <input type="checkbox" value="${esc(s.sub_id)}" class="sub-cb" ${finalChecked.has(s.sub_id) ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--accent)">
+                <span>${esc(s.name)}</span>
+            </label>
+        `).join('');
+    };
+    renderSubCheckboxes('nl-subs-list', subs);
     document.getElementById('links-nb').textContent=links.length;
     document.getElementById('links-pg-cnt').textContent=toFa(links.length)+' کانفیگ';
     document.getElementById('lsummary-badge').textContent=toFa(links.length);
@@ -1424,9 +1447,10 @@ async function createLink(){
   const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
   const speed_limit_unit=document.getElementById('nl-speed-unit').value;
   const customs=getCustomFields('nl');
+  const sub_ids = Array.from(document.querySelectorAll('#nl-subs-list input:checked')).map(cb => cb.value);
 
   try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain})});
+    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain,sub_ids})});
     if(!r.ok)throw new Error('failed');
     ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-sub-domain'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('nl-customs-list').innerHTML='';
@@ -1436,6 +1460,7 @@ async function createLink(){
 function openEditLink(uuid){
   const l=allLinksList.find(x=>x.uuid===uuid);
   if(!l)return;
+  renderSubCheckboxes('el-subs-list', allSubsList, new Set(l.sub_ids || []));
   document.getElementById('el-uuid').value=uuid;
   document.getElementById('el-label').value=l.label;
   document.getElementById('el-note').value=l.note||'';
@@ -1470,8 +1495,9 @@ async function saveEditLink(){
   const speed_limit_value=Number(document.getElementById('el-speed').value)||0;
   const speed_limit_unit=document.getElementById('el-speed-unit').value;
   const customs=getCustomFields('el');
+  const sub_ids = Array.from(document.querySelectorAll('#el-subs-list input:checked')).map(cb => cb.value);
 
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain};
+  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain,sub_ids};
   if(exp&&Number(exp)>0)body.expires_days=Number(exp);
   try{
     const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -1981,14 +2007,69 @@ async function downloadFromCf() {
   } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
 }
 
+let savedCustomsData = [];
+async function loadSavedCustoms() {
+    try {
+        const r = await authF('/api/customs');
+        const d = await r.json();
+        savedCustomsData = d.customs || [];
+        renderSavedCustoms('nl');
+        renderSavedCustoms('el');
+    } catch(e) {}
+}
+
+function renderSavedCustoms(prefix) {
+    const container = document.getElementById(`${prefix}-saved-customs`);
+    if(!container) return;
+    if(savedCustomsData.length === 0) {
+        container.innerHTML = '<span style="font-size:10px;color:var(--t3);padding:8px">هیچ کاستومی ذخیره نشده است.</span>';
+        return;
+    }
+    container.innerHTML = savedCustomsData.map(c => `
+        <div style="background:var(--accent-d);border:1px solid var(--card-b);border-radius:10px;padding:8px 10px;cursor:pointer;flex-shrink:0;min-width:130px;position:relative;transition:.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--card-b)'" onclick="addCustomField('${prefix}', '${esc(c.name)}', '${esc(c.address)}', '${esc(c.host_sni)}')">
+            <div style="font-weight:800;font-size:11.5px;color:var(--t1);margin-bottom:2px">${esc(c.name)}</div>
+            <div style="font-size:9.5px;color:var(--t3);line-height:1.4;font-family:ui-monospace,monospace">
+                ADDR: ${esc(c.address) || 'ندارد'}<br>
+                SNI: ${esc(c.host_sni) || 'ندارد'}
+            </div>
+            <button onclick="event.stopPropagation(); deleteSavedCustom('${c.id}')" style="position:absolute;top:6px;left:6px;background:none;border:none;color:var(--red-t);cursor:pointer;padding:2px"><i class="ti ti-trash" style="font-size:13px"></i></button>
+        </div>
+    `).join('');
+}
+
+async function saveCustomFromRow(btn, prefix) {
+    const row = btn.parentElement;
+    const name = row.querySelector(`.${prefix}-c-name`).value.trim();
+    const address = row.querySelector(`.${prefix}-c-addr`).value.trim();
+    const host_sni = row.querySelector(`.${prefix}-c-sni`).value.trim();
+    if(!name && !address && !host_sni) return toast('فیلدها خالی هستند', 'err');
+    
+    try {
+        const r = await authF('/api/customs', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, address, host_sni})});
+        if(r.ok) {
+            toast('کاستوم ذخیره شد ✓', 'ok');
+            loadSavedCustoms();
+        }
+    } catch(e) { toast('خطا در ذخیره', 'err'); }
+}
+
+async function deleteSavedCustom(id) {
+    if(!confirm('این کاستوم از لیست ذخیره‌ها حذف شود؟')) return;
+    try {
+        const r = await authF('/api/customs/'+id, {method: 'DELETE'});
+        if(r.ok) { toast('حذف شد ✓', 'ok'); loadSavedCustoms(); }
+    } catch(e) { toast('خطا در حذف', 'err'); }
+}
+
 function addCustomField(prefix, name='', address='', sni='') {
     const container = document.getElementById(`${prefix}-customs-list`);
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.1);padding:6px 8px;border-radius:10px;border:1px solid var(--card-b)';
+    div.style.cssText = 'display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.15);padding:6px 8px;border-radius:10px;border:1px dashed var(--card-b)';
     div.innerHTML = `
         <input class="fi ${prefix}-c-name" placeholder="نام (مثل: ایرانسل)" style="width:25%" value="${esc(name)}">
-        <input class="fi ${prefix}-c-addr" placeholder="آدرس IP یا دامنه" style="width:35%" value="${esc(address)}">
-        <input class="fi ${prefix}-c-sni" placeholder="SNI" style="width:30%" value="${esc(sni)}">
+        <input class="fi ${prefix}-c-addr" placeholder="آدرس IP یا دامنه" style="width:35%;direction:ltr" value="${esc(address)}">
+        <input class="fi ${prefix}-c-sni" placeholder="SNI" style="width:30%;direction:ltr" value="${esc(sni)}">
+        <button class="btn btn-g btn-icon" style="flex-shrink:0" onclick="saveCustomFromRow(this, '${prefix}')" title="ذخیره این کاستوم"><i class="ti ti-device-floppy"></i></button>
         <button class="btn btn-d btn-icon" style="flex-shrink:0" onclick="this.parentElement.remove()"><i class="ti ti-trash"></i></button>
     `;
     container.appendChild(div);
@@ -2028,7 +2109,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
   document.getElementById('sub-all-url')&&(document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all');
-  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();
+  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();loadSavedCustoms();
   setInterval(fetchStats,4000);
   setInterval(()=>{
     if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
@@ -2492,6 +2573,9 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
                 
             if "password_hash" in remote: AUTH["password_hash"] = remote["password_hash"]
             if "secret" in remote: CONFIG["secret"] = remote["secret"]
+            if "saved_customs" in remote:
+                SAVED_CUSTOMS.clear()
+                SAVED_CUSTOMS.extend(remote["saved_customs"])
             
             LAST_TS = remote_ts
             LAST_MODIFIED = remote_time
@@ -2508,6 +2592,9 @@ async def load_state():
                 if "password_hash" in data: AUTH["password_hash"] = data["password_hash"]
                 if "secret" in data: CONFIG["secret"] = data["secret"]
                 if "cf_sync" in data: CF_SYNC_CONFIG.update(data["cf_sync"])
+                if "saved_customs" in data:
+                    SAVED_CUSTOMS.clear()
+                    SAVED_CUSTOMS.extend(data["saved_customs"])
                 LAST_MODIFIED = data.get("saved_at", "2000-01-01T00:00:00")
                 LAST_TS = data.get("saved_ts", 0.0)
                 
@@ -2548,6 +2635,7 @@ async def save_state(mutate=False):
             data = {
                 "links": dict(LINKS),
                 "subs": dict(SUBS),
+                "saved_customs": SAVED_CUSTOMS,
                 "password_hash": AUTH["password_hash"],
                 "secret": CONFIG["secret"],
                 "cf_sync": CF_SYNC_CONFIG,
@@ -2574,6 +2662,7 @@ LINKS: dict = {}
 LINKS_LOCK = asyncio.Lock()
 SUBS: dict = {}
 SUBS_LOCK = asyncio.Lock()
+SAVED_CUSTOMS: list = []
 XHTTP_LOCK = asyncio.Lock()
 SESSIONS_LOCK = asyncio.Lock()
 
@@ -2893,6 +2982,30 @@ async def test_cloudflare():
     except Exception as e:
         return {"error": f"خطای سرور شما: {str(e)}"}
 
+@app.get("/api/customs")
+async def get_customs(_=Depends(require_auth)):
+    return {"customs": SAVED_CUSTOMS}
+
+@app.post("/api/customs")
+async def add_custom(request: Request, _=Depends(require_auth)):
+    body = await request.json()
+    new_id = secrets.token_hex(4)
+    SAVED_CUSTOMS.append({
+        "id": new_id,
+        "name": (body.get("name") or "کاستوم").strip(),
+        "address": (body.get("address") or "").strip(),
+        "host_sni": (body.get("host_sni") or "").strip()
+    })
+    asyncio.create_task(save_state(mutate=True))
+    return {"ok": True, "id": new_id}
+
+@app.delete("/api/customs/{cid}")
+async def del_custom(cid: str, _=Depends(require_auth)):
+    global SAVED_CUSTOMS
+    SAVED_CUSTOMS = [c for c in SAVED_CUSTOMS if c.get("id") != cid]
+    asyncio.create_task(save_state(mutate=True))
+    return {"ok": True}
+
 @app.get("/api/settings/cf-sync")
 async def get_cf_sync_settings(_=Depends(require_auth)):
     return {
@@ -3032,6 +3145,12 @@ async def create_link(request: Request, _=Depends(require_auth)):
             "port": port, "ip_limit": ip_limit, "speed_limit_bytes": speed_limit_bytes,
             "customs": body.get("customs", []), "custom_domain": custom_domain
         }
+    sub_ids = body.get("sub_ids", [])
+    async with SUBS_LOCK:
+        for sid in sub_ids:
+            if sid in SUBS and not any(l.startswith(uid) for l in SUBS[sid].get("link_ids", [])):
+                SUBS[sid]["link_ids"].append(uid)
+                
     asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
     return {"uuid": uid, **LINKS[uid]}
@@ -3083,6 +3202,17 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
             sv, su = float(body.get("speed_limit_value") or 0), body.get("speed_limit_unit") or "MBIT"
             link["speed_limit_bytes"] = 0 if sv <= 0 else parse_speed_to_bytes(sv, su)
             reset_bucket(uid)
+            
+    if "sub_ids" in body:
+        target_subs = set(body["sub_ids"])
+        async with SUBS_LOCK:
+            for sid, s in SUBS.items():
+                has_uid = any(l.startswith(uid) for l in s.get("link_ids", []))
+                if sid in target_subs and not has_uid:
+                    s["link_ids"].append(uid)
+                elif sid not in target_subs and has_uid:
+                    s["link_ids"] = [l for l in s["link_ids"] if not l.startswith(uid)]
+                    
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 

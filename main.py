@@ -1281,12 +1281,12 @@ function protoBadge(p){
   const v=m[p]||m['vless-ws'];
   return `<span class="proto-chip ${v[1]}">${v[0]}</span>`;
 }
-async function checkAuth(){try{const r=await fetch('/api/me');const d=await r.json();if(!d.authenticated)location.href='/sadra191388191378';}catch(e){location.href='/sadra191388191378'}}
-async function logout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/sadra191388191378'}
+async function checkAuth(){try{const r=await fetch('/api/me');const d=await r.json();if(!d.authenticated)location.href='/sadra1491388191378';}catch(e){location.href='/sadra1491388191378'}}
+async function logout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/sadra1491388191378'}
 document.getElementById('logout-btn').addEventListener('click',logout);
 async function authF(url,opts={}){
   const r=await fetch(url,opts);
-  if(r.status===401){location.href='/sadra191388191378';throw new Error('unauthorized')}
+  if(r.status===401){location.href='/sadra1491388191378';throw new Error('unauthorized')}
   return r;
 }
 function selectProto(val,el){
@@ -2551,6 +2551,14 @@ def _load_or_create_secret() -> str:
     except Exception as e:
         logger.warning(f"Could not persist SECRET_KEY, sessions may reset on restart: {e}")
         return secrets.token_urlsafe(32)
+
+CONFIG = {
+    "port": int(os.environ.get("PORT", 8000)),
+    "secret": _load_or_create_secret(),
+    "host": os.environ.get("RAILWAY_PUBLIC_DOMAIN", "localhost"),
+}
+
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # فریب دادن ربات‌ها برای تمام آدرس‌های نامعتبر (404 Not Found و 405 Method Not Allowed)
 @app.exception_handler(404)
@@ -3946,7 +3954,7 @@ async def public_sub_data(uuid_key: str, request: Request):
         "links": links_out,
     }
 
-@app.get("/sadra191388191378", response_class=HTMLResponse)
+@app.get("/sadra1491388191378", response_class=HTMLResponse)
 async def login_page(request: Request):
     if await is_valid_session(request.cookies.get(SESSION_COOKIE)):
         return RedirectResponse(url="/dashboard")

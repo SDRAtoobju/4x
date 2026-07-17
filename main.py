@@ -704,8 +704,9 @@ a{color:inherit;text-decoration:none}
       
       <div class="modal-v2-field">
         <label><i class="ti ti-world"></i> لینک‌های ساب کاستوم (دامنه/Worker/Pages)</label>
+        <div id="ns-saved-customs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-top:6px"></div>
         <div id="ns-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
-        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('ns')"><i class="ti ti-plus"></i> افزودن لینک کاستوم</button>
+        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('ns')"><i class="ti ti-plus"></i> ایجاد لینک کاستوم دستی</button>
       </div>
 
       <div class="modal-v2-field" style="margin-bottom:0">
@@ -740,8 +741,9 @@ a{color:inherit;text-decoration:none}
       
       <div class="modal-v2-field">
         <label><i class="ti ti-world"></i> لینک‌های ساب کاستوم (دامنه/Worker/Pages)</label>
+        <div id="es-saved-customs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-top:6px"></div>
         <div id="es-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
-        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('es')"><i class="ti ti-plus"></i> افزودن لینک کاستوم</button>
+        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('es')"><i class="ti ti-plus"></i> ایجاد لینک کاستوم دستی</button>
       </div>
 
       <div class="modal-v2-field" style="margin-bottom:0">
@@ -1460,7 +1462,9 @@ async function createLink(){
 function openEditLink(uuid){
   const l=allLinksList.find(x=>x.uuid===uuid);
   if(!l)return;
-  renderSubCheckboxes('el-subs-list', allSubsList, new Set(l.sub_ids || []));
+  
+  const varSubs = l.var_subs || {};
+  renderSubCheckboxes('el-subs-list', allSubsList, new Set(varSubs['default'] || []));
   document.getElementById('el-uuid').value=uuid;
   document.getElementById('el-label').value=l.label;
   document.getElementById('el-note').value=l.note||'';
@@ -1476,7 +1480,10 @@ function openEditLink(uuid){
   else{document.getElementById('el-speed').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-speed-unit').value='MBIT';}
   
   document.getElementById('el-customs-list').innerHTML = '';
-  (l.customs || []).forEach(c => addCustomField('el', c.name, c.address, c.host_sni));
+  (l.customs || []).forEach((c, idx) => {
+      const cSubs = varSubs[String(idx)] || [];
+      addCustomField('el', c.name, c.address, c.host_sni, cSubs);
+  });
   
   openModal('modal-edit-link');
 }
@@ -1572,6 +1579,58 @@ function filterSubs(q){
   if(!q){renderSubsGrid(allSubsRaw);return}
   renderSubsGrid(allSubsRaw.filter(s=>s.name.toLowerCase().includes(q)||(s.desc||'').toLowerCase().includes(q)));
 }
+let savedSubCustomsData = [];
+async function loadSavedSubCustoms() {
+    try {
+        const r = await authF('/api/sub-customs');
+        const d = await r.json();
+        savedSubCustomsData = d.customs || [];
+        renderSavedSubCustoms('ns');
+        renderSavedSubCustoms('es');
+    } catch(e) {}
+}
+
+function renderSavedSubCustoms(prefix) {
+    const container = document.getElementById(`${prefix}-saved-customs`);
+    if(!container) return;
+    if(savedSubCustomsData.length === 0) {
+        container.innerHTML = '<span style="font-size:10px;color:var(--t3);padding:8px">هیچ کاستومی ذخیره نشده است.</span>';
+        return;
+    }
+    container.innerHTML = savedSubCustomsData.map(c => `
+        <div style="background:var(--accent-d);border:1px solid var(--card-b);border-radius:10px;padding:8px 10px;cursor:pointer;flex-shrink:0;min-width:130px;position:relative;transition:.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--card-b)'" onclick="addSubCustomField('${prefix}', '${esc(c.name)}', '${esc(c.domain)}')">
+            <div style="font-weight:800;font-size:11.5px;color:var(--t1);margin-bottom:2px">${esc(c.name)}</div>
+            <div style="font-size:9.5px;color:var(--t3);line-height:1.4;font-family:ui-monospace,monospace" dir="ltr">
+                ${esc(c.domain) || 'ندارد'}
+            </div>
+            <button onclick="event.stopPropagation(); deleteSavedSubCustom('${c.id}')" style="position:absolute;top:6px;left:6px;background:none;border:none;color:var(--red-t);cursor:pointer;padding:2px"><i class="ti ti-trash" style="font-size:13px"></i></button>
+        </div>
+    `).join('');
+}
+
+async function saveSubCustomFromRow(btn, prefix) {
+    const row = btn.parentElement;
+    const name = row.querySelector(`.${prefix}-c-name`).value.trim();
+    const domain = row.querySelector(`.${prefix}-c-domain`).value.trim();
+    if(!name && !domain) return toast('فیلدها خالی هستند', 'err');
+    
+    try {
+        const r = await authF('/api/sub-customs', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, domain})});
+        if(r.ok) {
+            toast('کاستوم ساب ذخیره شد ✓', 'ok');
+            loadSavedSubCustoms();
+        }
+    } catch(e) { toast('خطا در ذخیره', 'err'); }
+}
+
+async function deleteSavedSubCustom(id) {
+    if(!confirm('این کاستوم از لیست ذخیره‌ها حذف شود؟')) return;
+    try {
+        const r = await authF('/api/sub-customs/'+id, {method: 'DELETE'});
+        if(r.ok) { toast('حذف شد ✓', 'ok'); loadSavedSubCustoms(); }
+    } catch(e) { toast('خطا در حذف', 'err'); }
+}
+
 function addSubCustomField(prefix, name='', domain='') {
     const container = document.getElementById(`${prefix}-customs-list`);
     const div = document.createElement('div');
@@ -1579,6 +1638,7 @@ function addSubCustomField(prefix, name='', domain='') {
     div.innerHTML = `
         <input class="fi ${prefix}-c-name" placeholder="نام (مثل: کلودفلر)" style="width:35%" value="${esc(name)}">
         <input class="fi ${prefix}-c-domain" placeholder="دامنه (مثل: sub.site.com)" style="width:65%;direction:ltr" value="${esc(domain)}">
+        <button class="btn btn-g btn-icon" style="flex-shrink:0;width:30px;height:30px;padding:0" onclick="saveSubCustomFromRow(this, '${prefix}')" title="ذخیره این کاستوم"><i class="ti ti-device-floppy"></i></button>
         <button class="btn btn-d btn-icon" style="flex-shrink:0;width:30px;height:30px;padding:0" onclick="this.parentElement.remove()"><i class="ti ti-trash"></i></button>
     `;
     container.appendChild(div);
@@ -2061,27 +2121,44 @@ async function deleteSavedCustom(id) {
     } catch(e) { toast('خطا در حذف', 'err'); }
 }
 
-function addCustomField(prefix, name='', address='', sni='') {
+function addCustomField(prefix, name='', address='', sni='', preSelectedSubs=[]) {
     const container = document.getElementById(`${prefix}-customs-list`);
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.15);padding:6px 8px;border-radius:10px;border:1px dashed var(--card-b)';
+    div.className = 'custom-field-row';
+    div.style.cssText = 'display:flex;flex-direction:column;gap:6px;background:rgba(0,0,0,0.15);padding:8px;border-radius:10px;border:1px dashed var(--card-b)';
+    
+    const checkedSet = new Set(preSelectedSubs);
+    const subCheckboxes = allSubsList.map(s => `
+        <label style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);cursor:pointer;padding:4px 6px;border-radius:6px;background:rgba(255,215,0,0.05)">
+            <input type="checkbox" value="${esc(s.sub_id)}" class="c-sub-cb" ${checkedSet.has(s.sub_id) ? 'checked' : ''} style="accent-color:var(--accent)">
+            ${esc(s.name)}
+        </label>
+    `).join('');
+
     div.innerHTML = `
-        <input class="fi ${prefix}-c-name" placeholder="نام (مثل: ایرانسل)" style="width:25%" value="${esc(name)}">
-        <input class="fi ${prefix}-c-addr" placeholder="آدرس IP یا دامنه" style="width:35%;direction:ltr" value="${esc(address)}">
-        <input class="fi ${prefix}-c-sni" placeholder="SNI" style="width:30%;direction:ltr" value="${esc(sni)}">
-        <button class="btn btn-g btn-icon" style="flex-shrink:0" onclick="saveCustomFromRow(this, '${prefix}')" title="ذخیره این کاستوم"><i class="ti ti-device-floppy"></i></button>
-        <button class="btn btn-d btn-icon" style="flex-shrink:0" onclick="this.parentElement.remove()"><i class="ti ti-trash"></i></button>
+        <div style="display:flex;gap:6px;align-items:center">
+            <input class="fi ${prefix}-c-name" placeholder="نام (مثل: ایرانسل)" style="width:25%" value="${esc(name)}">
+            <input class="fi ${prefix}-c-addr" placeholder="آدرس IP یا دامنه" style="width:35%;direction:ltr" value="${esc(address)}">
+            <input class="fi ${prefix}-c-sni" placeholder="SNI" style="width:30%;direction:ltr" value="${esc(sni)}">
+            <button class="btn btn-g btn-icon" style="flex-shrink:0" onclick="saveCustomFromRow(this, '${prefix}')" title="ذخیره این کاستوم"><i class="ti ti-device-floppy"></i></button>
+            <button class="btn btn-d btn-icon" style="flex-shrink:0" onclick="this.parentElement.parentElement.remove()"><i class="ti ti-trash"></i></button>
+        </div>
+        ${allSubsList.length > 0 ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;border-top:1px dashed rgba(255,255,255,0.1);padding-top:6px">
+            <span style="font-size:9.5px;color:var(--t3);display:flex;align-items:center">افزودن به:</span>
+            ${subCheckboxes}
+        </div>` : ''}
     `;
     container.appendChild(div);
 }
 
 function getCustomFields(prefix) {
     const customs = [];
-    document.querySelectorAll(`#${prefix}-customs-list > div`).forEach(row => {
+    document.querySelectorAll(`#${prefix}-customs-list > .custom-field-row`).forEach(row => {
         const name = row.querySelector(`.${prefix}-c-name`).value.trim();
         const addr = row.querySelector(`.${prefix}-c-addr`).value.trim();
         const sni = row.querySelector(`.${prefix}-c-sni`).value.trim();
-        if (name || addr || sni) customs.push({name: name || 'کاستوم', address: addr, host_sni: sni});
+        const sub_ids = Array.from(row.querySelectorAll('.c-sub-cb:checked')).map(cb => cb.value);
+        if (name || addr || sni) customs.push({name: name || 'کاستوم', address: addr, host_sni: sni, sub_ids});
     });
     return customs;
 }
@@ -2109,7 +2186,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
   document.getElementById('sub-all-url')&&(document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all');
-  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();loadSavedCustoms();
+  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();loadSavedCustoms();loadSavedSubCustoms();
   setInterval(fetchStats,4000);
   setInterval(()=>{
     if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
@@ -2576,6 +2653,9 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
             if "saved_customs" in remote:
                 SAVED_CUSTOMS.clear()
                 SAVED_CUSTOMS.extend(remote["saved_customs"])
+            if "saved_sub_customs" in remote:
+                SAVED_SUB_CUSTOMS.clear()
+                SAVED_SUB_CUSTOMS.extend(remote["saved_sub_customs"])
             
             LAST_TS = remote_ts
             LAST_MODIFIED = remote_time
@@ -2595,6 +2675,9 @@ async def load_state():
                 if "saved_customs" in data:
                     SAVED_CUSTOMS.clear()
                     SAVED_CUSTOMS.extend(data["saved_customs"])
+                if "saved_sub_customs" in data:
+                    SAVED_SUB_CUSTOMS.clear()
+                    SAVED_SUB_CUSTOMS.extend(data["saved_sub_customs"])
                 LAST_MODIFIED = data.get("saved_at", "2000-01-01T00:00:00")
                 LAST_TS = data.get("saved_ts", 0.0)
                 
@@ -2636,6 +2719,7 @@ async def save_state(mutate=False):
                 "links": dict(LINKS),
                 "subs": dict(SUBS),
                 "saved_customs": SAVED_CUSTOMS,
+                "saved_sub_customs": SAVED_SUB_CUSTOMS,
                 "password_hash": AUTH["password_hash"],
                 "secret": CONFIG["secret"],
                 "cf_sync": CF_SYNC_CONFIG,
@@ -2663,6 +2747,7 @@ LINKS_LOCK = asyncio.Lock()
 SUBS: dict = {}
 SUBS_LOCK = asyncio.Lock()
 SAVED_CUSTOMS: list = []
+SAVED_SUB_CUSTOMS: list = []
 XHTTP_LOCK = asyncio.Lock()
 SESSIONS_LOCK = asyncio.Lock()
 
@@ -3006,6 +3091,29 @@ async def del_custom(cid: str, _=Depends(require_auth)):
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 
+@app.get("/api/sub-customs")
+async def get_sub_customs(_=Depends(require_auth)):
+    return {"customs": SAVED_SUB_CUSTOMS}
+
+@app.post("/api/sub-customs")
+async def add_sub_custom(request: Request, _=Depends(require_auth)):
+    body = await request.json()
+    new_id = secrets.token_hex(4)
+    SAVED_SUB_CUSTOMS.append({
+        "id": new_id,
+        "name": (body.get("name") or "کاستوم").strip(),
+        "domain": (body.get("domain") or "").strip()
+    })
+    asyncio.create_task(save_state(mutate=True))
+    return {"ok": True, "id": new_id}
+
+@app.delete("/api/sub-customs/{cid}")
+async def del_sub_custom(cid: str, _=Depends(require_auth)):
+    global SAVED_SUB_CUSTOMS
+    SAVED_SUB_CUSTOMS = [c for c in SAVED_SUB_CUSTOMS if c.get("id") != cid]
+    asyncio.create_task(save_state(mutate=True))
+    return {"ok": True}
+
 @app.get("/api/settings/cf-sync")
 async def get_cf_sync_settings(_=Depends(require_auth)):
     return {
@@ -3146,10 +3254,22 @@ async def create_link(request: Request, _=Depends(require_auth)):
             "customs": body.get("customs", []), "custom_domain": custom_domain
         }
     sub_ids = body.get("sub_ids", [])
+    customs = body.get("customs", [])
+    
+    clean_customs = [{"name": c.get("name",""), "address": c.get("address",""), "host_sni": c.get("host_sni","")} for c in customs]
+    LINKS[uid]["customs"] = clean_customs
+    
     async with SUBS_LOCK:
         for sid in sub_ids:
-            if sid in SUBS and not any(l.startswith(uid) for l in SUBS[sid].get("link_ids", [])):
+            if sid in SUBS and uid not in SUBS[sid].get("link_ids", []):
                 SUBS[sid]["link_ids"].append(uid)
+        
+        for idx, c in enumerate(customs):
+            c_sub_ids = c.get("sub_ids", [])
+            uid_idx = f"{uid}#{idx}"
+            for sid in c_sub_ids:
+                if sid in SUBS and uid_idx not in SUBS[sid].get("link_ids", []):
+                    SUBS[sid]["link_ids"].append(uid_idx)
                 
     asyncio.create_task(save_state(mutate=True))
     log_activity("link", f"کانفیگ «{LINKS[uid]['label']}» ساخته شد", "ok")
@@ -3162,14 +3282,27 @@ async def list_links(request: Request, _=Depends(require_auth)):
     async with SUBS_LOCK: subs_snap = dict(SUBS)
     result = []
     for uid, d in snap.items():
-        belong_subs = [sid for sid, s in subs_snap.items() if any(l.startswith(uid) for l in s.get("link_ids", []))]
+        belong_subs = []
+        var_subs = {"default": []}
+        for sid, s in subs_snap.items():
+            found = False
+            for lid in s.get("link_ids", []):
+                if lid == uid:
+                    var_subs["default"].append(sid)
+                    found = True
+                elif lid.startswith(uid + "#"):
+                    idx = lid.split("#")[1]
+                    var_subs.setdefault(idx, []).append(sid)
+                    found = True
+            if found:
+                belong_subs.append(sid)
         
         variations = [{"id": uid, "name": "پیش‌فرض (Default)", "link": vless_link_for_link(d, uid, host)}]
         for i, c in enumerate(d.get("customs", [])):
             variations.append({"id": f"{uid}#{i}", "name": c.get("name", f"Custom {i+1}"), "link": vless_link_for_link(d, uid, host, c)})
             
         result.append({
-            "uuid": uid, **d, "sub_ids": belong_subs, "expired": is_link_expired(d),
+            "uuid": uid, **d, "sub_ids": belong_subs, "var_subs": var_subs, "expired": is_link_expired(d),
             "variations": variations, "sub_url": format_sub_url(d.get("custom_domain"), f"/sub/{uid}", host),
             "connected_ips": len(unique_ips_for_uuid(uid)),
         })
@@ -3185,7 +3318,9 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         if "active" in body: link["active"] = bool(body["active"])
         if "label" in body: link["label"] = str(body["label"])[:60]
         if "note" in body: link["note"] = str(body["note"])[:200]
-        if "customs" in body: link["customs"] = body["customs"]
+        if "customs" in body:
+            clean_customs = [{"name": c.get("name",""), "address": c.get("address",""), "host_sni": c.get("host_sni","")} for c in body["customs"]]
+            link["customs"] = clean_customs
         if "custom_domain" in body: link["custom_domain"] = str(body["custom_domain"]).strip()
         if "reset_usage" in body and body["reset_usage"]: link["used_bytes"] = 0
         if "limit_value" in body:
@@ -3207,12 +3342,23 @@ async def update_link(uid: str, request: Request, _=Depends(require_auth)):
         target_subs = set(body["sub_ids"])
         async with SUBS_LOCK:
             for sid, s in SUBS.items():
-                has_uid = any(l.startswith(uid) for l in s.get("link_ids", []))
-                if sid in target_subs and not has_uid:
+                if sid in target_subs and uid not in s.get("link_ids", []):
                     s["link_ids"].append(uid)
-                elif sid not in target_subs and has_uid:
-                    s["link_ids"] = [l for l in s["link_ids"] if not l.startswith(uid)]
-                    
+                elif sid not in target_subs and uid in s.get("link_ids", []):
+                    s["link_ids"].remove(uid)
+
+    if "customs" in body:
+        async with SUBS_LOCK:
+            for sid, s in SUBS.items():
+                s["link_ids"] = [lid for lid in s.get("link_ids", []) if not lid.startswith(f"{uid}#")]
+            
+            for idx, c in enumerate(body["customs"]):
+                c_sub_ids = c.get("sub_ids", [])
+                uid_idx = f"{uid}#{idx}"
+                for sid in c_sub_ids:
+                    if sid in SUBS and uid_idx not in SUBS[sid].get("link_ids", []):
+                        SUBS[sid]["link_ids"].append(uid_idx)
+                        
     asyncio.create_task(save_state(mutate=True))
     return {"ok": True}
 

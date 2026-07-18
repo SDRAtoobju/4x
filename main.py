@@ -2733,7 +2733,11 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
                 
             if "password_hash" in remote: AUTH["password_hash"] = remote["password_hash"]
             if "secret" in remote: CONFIG["secret"] = remote["secret"]
-            if "tg_config" in remote: TG_CONFIG.update(remote["tg_config"])
+            if "tg_config" in remote:
+                tg = remote["tg_config"]
+                if tg.get("bot_token"): tg["bot_token"] = deobf_secret(tg["bot_token"])
+                if tg.get("admin_id"): tg["admin_id"] = deobf_secret(tg["admin_id"])
+                TG_CONFIG.update(tg)
             if "saved_customs" in remote:
                 SAVED_CUSTOMS.clear()
                 SAVED_CUSTOMS.extend(remote["saved_customs"])
@@ -2755,8 +2759,16 @@ async def load_state():
                 SUBS.update(data.get("subs", {}))
                 if "password_hash" in data: AUTH["password_hash"] = data["password_hash"]
                 if "secret" in data: CONFIG["secret"] = data["secret"]
-                if "cf_sync" in data: CF_SYNC_CONFIG.update(data["cf_sync"])
-                if "tg_config" in data: TG_CONFIG.update(data["tg_config"])
+                if "cf_sync" in data:
+                    cf = data["cf_sync"]
+                    if cf.get("token"): cf["token"] = deobf_secret(cf["token"])
+                    if cf.get("worker_url"): cf["worker_url"] = deobf_secret(cf["worker_url"])
+                    CF_SYNC_CONFIG.update(cf)
+                if "tg_config" in data:
+                    tg = data["tg_config"]
+                    if tg.get("bot_token"): tg["bot_token"] = deobf_secret(tg["bot_token"])
+                    if tg.get("admin_id"): tg["admin_id"] = deobf_secret(tg["admin_id"])
+                    TG_CONFIG.update(tg)
                 if "saved_customs" in data:
                     SAVED_CUSTOMS.clear()
                     SAVED_CUSTOMS.extend(data["saved_customs"])
@@ -2800,6 +2812,14 @@ async def save_state(mutate=False):
             LAST_TS = now_ts
             LAST_MODIFIED = now_str
             
+            cf_copy = dict(CF_SYNC_CONFIG)
+            if cf_copy.get("token"): cf_copy["token"] = obf_secret(cf_copy["token"])
+            if cf_copy.get("worker_url"): cf_copy["worker_url"] = obf_secret(cf_copy["worker_url"])
+
+            tg_copy = dict(TG_CONFIG)
+            if tg_copy.get("bot_token"): tg_copy["bot_token"] = obf_secret(tg_copy["bot_token"])
+            if tg_copy.get("admin_id"): tg_copy["admin_id"] = obf_secret(tg_copy["admin_id"])
+
             data = {
                 "links": dict(LINKS),
                 "subs": dict(SUBS),
@@ -2807,8 +2827,8 @@ async def save_state(mutate=False):
                 "saved_sub_customs": SAVED_SUB_CUSTOMS,
                 "password_hash": AUTH["password_hash"],
                 "secret": CONFIG["secret"],
-                "cf_sync": CF_SYNC_CONFIG,
-                "tg_config": TG_CONFIG,
+                "cf_sync": cf_copy,
+                "tg_config": tg_copy,
                 "saved_ts": now_ts,
                 "saved_at": now_str,
             }
@@ -2858,6 +2878,26 @@ def hash_password(pw: str) -> str:
 
 AUTH = {"password_hash": hash_password(os.environ.get("ADMIN_PASSWORD", "admin"))}
 SESSIONS: dict = {}
+
+# توابع رمزنگاری اطلاعات حساس در فایل بکاپ
+def obf_secret(text: str) -> str:
+    if not text or text.startswith("ENC:"): return text
+    key = os.environ.get("MASTER_KEY", AUTH.get("password_hash", "SadraEngine"))
+    k = hashlib.sha256(key.encode()).digest()
+    b = text.encode('utf-8')
+    res = bytearray(b[i] ^ k[i % len(k)] for i in range(len(b)))
+    return "ENC:" + base64.urlsafe_b64encode(res).decode('utf-8')
+
+def deobf_secret(text: str) -> str:
+    if not text or not text.startswith("ENC:"): return text
+    try:
+        key = os.environ.get("MASTER_KEY", AUTH.get("password_hash", "SadraEngine"))
+        k = hashlib.sha256(key.encode()).digest()
+        b = base64.urlsafe_b64decode(text[4:])
+        res = bytearray(b[i] ^ k[i % len(k)] for i in range(len(b)))
+        return res.decode('utf-8')
+    except:
+        return text
 
 async def create_session() -> str:
     token = secrets.token_urlsafe(32)
@@ -3103,13 +3143,23 @@ async def ensure_default_link():
 @app.post("/api/cf-sync/upload")
 async def manual_cf_upload(_=Depends(require_auth)):
     import datetime as dt
+    cf_copy = dict(CF_SYNC_CONFIG)
+    if cf_copy.get("token"): cf_copy["token"] = obf_secret(cf_copy["token"])
+    if cf_copy.get("worker_url"): cf_copy["worker_url"] = obf_secret(cf_copy["worker_url"])
+
+    tg_copy = dict(TG_CONFIG)
+    if tg_copy.get("bot_token"): tg_copy["bot_token"] = obf_secret(tg_copy["bot_token"])
+    if tg_copy.get("admin_id"): tg_copy["admin_id"] = obf_secret(tg_copy["admin_id"])
+
     data = {
         "links": dict(LINKS),
         "subs": dict(SUBS),
+        "saved_customs": SAVED_CUSTOMS,
+        "saved_sub_customs": SAVED_SUB_CUSTOMS,
         "password_hash": AUTH["password_hash"],
         "secret": CONFIG["secret"],
-        "cf_sync": CF_SYNC_CONFIG,
-        "tg_config": TG_CONFIG,
+        "cf_sync": cf_copy,
+        "tg_config": tg_copy,
         "saved_ts": time.time(),
         "saved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
@@ -3190,7 +3240,11 @@ async def manual_tg_download(_=Depends(require_auth)):
             SUBS.update(remote.get("subs", {}))
         AUTH["password_hash"] = remote.get("password_hash", AUTH["password_hash"])
         CONFIG["secret"] = remote.get("secret", CONFIG["secret"])
-        if "tg_config" in remote: TG_CONFIG.update(remote["tg_config"])
+        if "tg_config" in remote:
+            tg = remote["tg_config"]
+            if tg.get("bot_token"): tg["bot_token"] = deobf_secret(tg["bot_token"])
+            if tg.get("admin_id"): tg["admin_id"] = deobf_secret(tg["admin_id"])
+            TG_CONFIG.update(tg)
         LAST_TS = remote.get("saved_ts", time.time())
         LAST_MODIFIED = remote.get("saved_at", "2000-01-01T00:00:00")
         

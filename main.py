@@ -1240,11 +1240,42 @@ a{color:inherit;text-decoration:none}
           <button class="pw-submit" style="background:var(--accent-d);color:var(--accent);flex:1;box-shadow:none" onclick="testCfSync()"><i class="ti ti-wifi"></i> تست اتصال</button>
         </div>
         <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--card-b)">
-          <button class="pw-submit" style="background:var(--accent);color:#000;flex:1;box-shadow:none" onclick="uploadToCf()"><i class="ti ti-cloud-upload"></i> آپلود بکاپ در کلودفلر</button>
+          <button class="pw-submit" style="background:var(--accent);color:#000;flex:1;box-shadow:none" onclick="uploadToCf()"><i class="ti ti-cloud-upload"></i> ذخیره/آپلود در تلگرام و کلودفلر</button>
           <button class="pw-submit" style="background:var(--purple);color:#000;flex:1;box-shadow:none" onclick="downloadFromCf()"><i class="ti ti-cloud-download"></i> دریافت دیتا از کلودفلر</button>
         </div>
       </div>
     </div>
+
+    <div class="pw-panel" style="margin-top:16px; grid-column: 1 / -1;">
+      <div class="pw-hero" style="background: linear-gradient(135deg, rgba(59,130,246,0.1), transparent);">
+        <div class="pw-hero-icon" style="background: linear-gradient(135deg, #3B82F6, #2563EB);box-shadow:0 6px 18px rgba(59,130,246,0.25)"><i class="ti ti-brand-telegram"></i></div>
+        <div class="pw-hero-text">
+          <div class="pw-hero-title">تنظیمات ربات تلگرام (بکاپ)</div>
+          <div class="pw-hero-sub">فایل دیتابیس را به عنوان پشتیبان در تلگرام ذخیره کنید</div>
+        </div>
+      </div>
+      <div class="pw-body">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="fg" style="flex:1.5">
+            <label>توکن ربات تلگرام (Bot Token)</label>
+            <input class="pw-input" id="tg-bot-token" type="password" placeholder="مثال: 123456:ABC-DEF1234ghIkl-zyx...">
+          </div>
+          <div class="fg" style="flex:1">
+            <label>آیدی عددی ادمین (Admin ID)</label>
+            <input class="pw-input" id="tg-admin-id" placeholder="مثال: 123456789">
+          </div>
+        </div>
+        <div class="cl" style="margin-top:0; margin-bottom:16px; background:rgba(59,130,246,0.1); border-color:rgba(59,130,246,0.2); color:var(--t1)">
+          <i class="ti ti-info-circle" style="color:#3B82F6"></i>
+          <span style="font-size:10.5px">برای **دریافت بکاپ از تلگرام**، ابتدا در ربات خود فایل بکاپ را فوروارد/ارسال کنید، سپس دکمه دریافت زیر را بزنید.</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="pw-submit" style="background:var(--accent-d);color:var(--accent);flex:1;box-shadow:none" onclick="saveTgSettings()"><i class="ti ti-device-floppy"></i> ذخیره تنظیمات تلگرام</button>
+          <button class="pw-submit" style="background:#3B82F6;color:#fff;flex:1" onclick="downloadFromTg()"><i class="ti ti-cloud-download"></i> دریافت دیتا از تلگرام</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 </main>
@@ -2048,23 +2079,59 @@ async function testCfSync() {
 }
 
 async function uploadToCf() {
-  toast('در حال آپلود اطلاعات...', 'info');
+  toast('در حال ارسال بکاپ به تلگرام/کلودفلر...', 'info');
   try {
     const r = await authF('/api/cf-sync/upload', {method: 'POST'});
-    if(r.ok) toast('اطلاعات با موفقیت در کلودفلر آپلود شد ✓', 'ok');
+    if(r.ok) toast('بکاپ با موفقیت آپلود شد ✓', 'ok');
     else throw new Error();
-  } catch(e) { toast('خطا در آپلود اطلاعات', 'err'); }
+  } catch(e) { toast('خطا در آپلود اطلاعات (تنظیمات را چک کنید)', 'err'); }
 }
 
 async function downloadFromCf() {
-  toast('در حال دریافت اطلاعات...', 'info');
+  toast('در حال دریافت اطلاعات از کلودفلر...', 'info');
   try {
     const r = await authF('/api/cf-sync/download', {method: 'POST'});
     if(r.ok) {
-      toast('اطلاعات دریافت شد. در حال بارگذاری مجدد...', 'ok');
+      toast('اطلاعات دریافت شد. بارگذاری مجدد...', 'ok');
       setTimeout(() => location.reload(), 1500);
     } else throw new Error();
-  } catch(e) { toast('خطا در دریافت اطلاعات', 'err'); }
+  } catch(e) { toast('خطا در دریافت اطلاعات کلودفلر', 'err'); }
+}
+
+async function loadTgSettings() {
+  try {
+    const r = await authF('/api/settings/telegram');
+    const d = await r.json();
+    document.getElementById('tg-bot-token').value = d.bot_token || '';
+    document.getElementById('tg-admin-id').value = d.admin_id || '';
+  } catch(e) {}
+}
+
+async function saveTgSettings() {
+  const token = document.getElementById('tg-bot-token').value.trim();
+  const admin_id = document.getElementById('tg-admin-id').value.trim();
+  try {
+    const r = await authF('/api/settings/telegram', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ bot_token: token, admin_id: admin_id })
+    });
+    if (r.ok) toast('تنظیمات تلگرام ذخیره شد ✓', 'ok');
+  } catch(e) { toast('خطا در ذخیره تلگرام', 'err'); }
+}
+
+async function downloadFromTg() {
+  toast('در حال جستجو و دریافت بکاپ از تلگرام...', 'info');
+  try {
+    const r = await authF('/api/tg-sync/download', {method: 'POST'});
+    if(!r.ok) {
+      const d = await r.json().catch(()=>({}));
+      throw new Error(d.detail || 'خطا');
+    }
+    toast('اطلاعات با موفقیت از تلگرام بازگردانی شد! بارگذاری مجدد...', 'ok');
+    setTimeout(() => location.reload(), 1500);
+  } catch(e) { 
+    toast(e.message || 'خطا در دریافت از تلگرام', 'err'); 
+  }
 }
 
 let savedCustomsData = [];
@@ -2186,7 +2253,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
   document.getElementById('sub-all-url')&&(document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all');
-  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();loadSavedCustoms();loadSavedSubCustoms();
+  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();loadTgSettings();loadSavedCustoms();loadSavedSubCustoms();
   setInterval(fetchStats,4000);
   setInterval(()=>{
     if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
@@ -2579,6 +2646,11 @@ CF_SYNC_CONFIG = {
     "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
 
+TG_CONFIG = {
+    "bot_token": "",   # توکن ربات خود را اینجا بگذارید (اختیاری، از پنل هم قابل تنظیم است)
+    "admin_id": ""     # آیدی عددی تلگرام خود را اینجا بگذارید
+}
+
 async def get_cf_kv(key: str):
     url = CF_SYNC_CONFIG["worker_url"]
     token = CF_SYNC_CONFIG["token"]
@@ -2683,6 +2755,7 @@ async def load_state():
                 if "password_hash" in data: AUTH["password_hash"] = data["password_hash"]
                 if "secret" in data: CONFIG["secret"] = data["secret"]
                 if "cf_sync" in data: CF_SYNC_CONFIG.update(data["cf_sync"])
+                if "tg_config" in data: TG_CONFIG.update(data["tg_config"])
                 if "saved_customs" in data:
                     SAVED_CUSTOMS.clear()
                     SAVED_CUSTOMS.extend(data["saved_customs"])
@@ -2734,6 +2807,7 @@ async def save_state(mutate=False):
                 "password_hash": AUTH["password_hash"],
                 "secret": CONFIG["secret"],
                 "cf_sync": CF_SYNC_CONFIG,
+                "tg_config": TG_CONFIG,
                 "saved_ts": now_ts,
                 "saved_at": now_str,
             }
@@ -3031,22 +3105,109 @@ async def manual_cf_upload(_=Depends(require_auth)):
     data = {
         "links": dict(LINKS),
         "subs": dict(SUBS),
-        "saved_customs": SAVED_CUSTOMS,
-        "saved_sub_customs": SAVED_SUB_CUSTOMS,
         "password_hash": AUTH["password_hash"],
         "secret": CONFIG["secret"],
         "cf_sync": CF_SYNC_CONFIG,
+        "tg_config": TG_CONFIG,
         "saved_ts": time.time(),
         "saved_at": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
     raw_data = json.dumps(data, ensure_ascii=False, indent=2)
-    success = await put_cf_kv("Sadra_Sadra_state", raw_data)
-    if success: return {"ok": True}
-    raise HTTPException(status_code=500, detail="upload failed")
+    
+    # 1. آپلود در کلودفلر (اگر تنظیم شده باشد)
+    cf_success = False
+    if CF_SYNC_CONFIG.get("worker_url") and CF_SYNC_CONFIG.get("token"):
+        cf_success = await put_cf_kv("Sadra_Sadra_state", raw_data)
+    
+    # 2. آپلود فایل در تلگرام (اگر تنظیم شده باشد)
+    tg_success = False
+    tg_token = TG_CONFIG.get("bot_token")
+    tg_chat = TG_CONFIG.get("admin_id")
+    if tg_token and tg_chat and http_client:
+        try:
+            url = f"https://api.telegram.org/bot{tg_token}/sendDocument"
+            file_name = f"Sadra_Backup_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M')}.json"
+            files = {"document": (file_name, raw_data.encode('utf-8'), "application/json")}
+            caption = "📦 بکاپ پنل صدرا\n\nبرای بازگردانی اطلاعات، این فایل را دوباره به همین ربات فوروارد کنید و در پنل دکمه «دریافت از تلگرام» را بزنید."
+            payload = {"chat_id": tg_chat, "caption": caption}
+            res = await http_client.post(url, data=payload, files=files)
+            if res.status_code == 200: tg_success = True
+        except Exception as e:
+            logger.error(f"TG Upload Error: {e}")
+
+    if not cf_success and not tg_success:
+        raise HTTPException(status_code=500, detail="Upload failed to both CF and TG. Check settings.")
+    return {"ok": True, "cf": cf_success, "tg": tg_success}
 
 @app.post("/api/cf-sync/download")
 async def manual_cf_download(_=Depends(require_auth)):
     await sync_with_cf(skip_structure=False, force_pull=True)
+    await save_state(mutate=True)
+    return {"ok": True}
+
+@app.post("/api/tg-sync/download")
+async def manual_tg_download(_=Depends(require_auth)):
+    tg_token = TG_CONFIG.get("bot_token")
+    tg_chat = TG_CONFIG.get("admin_id")
+    if not tg_token or not tg_chat or not http_client:
+        raise HTTPException(status_code=400, detail="تنظیمات تلگرام ناقص است")
+        
+    try:
+        # دریافت آخرین پیام‌های ارسال شده به ربات
+        url = f"https://api.telegram.org/bot{tg_token}/getUpdates"
+        res = await http_client.get(url)
+        updates = res.json().get("result", [])
+        
+        file_id = None
+        # جستجو از آخر به اول برای پیدا کردن آخرین فایلی که ادمین فرستاده
+        for u in reversed(updates):
+            msg = u.get("message", {})
+            if str(msg.get("chat", {}).get("id", "")) == str(tg_chat):
+                if "document" in msg:
+                    file_id = msg["document"]["file_id"]
+                    break
+                    
+        if not file_id:
+            raise HTTPException(status_code=404, detail="فایلی در ربات یافت نشد! ابتدا فایل بکاپ را به ربات ارسال کنید.")
+            
+        # دریافت مسیر دانلود فایل
+        file_res = await http_client.get(f"https://api.telegram.org/bot{tg_token}/getFile?file_id={file_id}")
+        file_path = file_res.json().get("result", {}).get("file_path")
+        if not file_path: raise HTTPException(status_code=500, detail="خطا در تلگرام")
+        
+        # دانلود فایل
+        dl_res = await http_client.get(f"https://api.telegram.org/file/bot{tg_token}/{file_path}")
+        remote = json.loads(dl_res.text)
+        
+        # اعمال تنظیمات مشابه کلودفلر
+        global LAST_TS, LAST_MODIFIED
+        async with LINKS_LOCK:
+            LINKS.clear()
+            LINKS.update(remote.get("links", {}))
+        async with SUBS_LOCK:
+            SUBS.clear()
+            SUBS.update(remote.get("subs", {}))
+        AUTH["password_hash"] = remote.get("password_hash", AUTH["password_hash"])
+        CONFIG["secret"] = remote.get("secret", CONFIG["secret"])
+        LAST_TS = remote.get("saved_ts", time.time())
+        LAST_MODIFIED = remote.get("saved_at", "2000-01-01T00:00:00")
+        
+        await save_state(mutate=True)
+        return {"ok": True}
+    except HTTPException: raise
+    except Exception as e:
+        logger.error(f"TG Download Error: {e}")
+        raise HTTPException(status_code=500, detail="فایل نامعتبر یا خطا در ارتباط")
+
+@app.get("/api/settings/telegram")
+async def get_tg_settings(_=Depends(require_auth)):
+    return {"bot_token": TG_CONFIG.get("bot_token", ""), "admin_id": TG_CONFIG.get("admin_id", "")}
+
+@app.post("/api/settings/telegram")
+async def update_tg_settings(request: Request, _=Depends(require_auth)):
+    body = await request.json()
+    TG_CONFIG["bot_token"] = body.get("bot_token", "").strip()
+    TG_CONFIG["admin_id"] = str(body.get("admin_id", "")).strip()
     await save_state(mutate=True)
     return {"ok": True}
 

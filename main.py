@@ -2733,6 +2733,7 @@ async def sync_with_cf(skip_structure=False, force_pull=False):
                 
             if "password_hash" in remote: AUTH["password_hash"] = remote["password_hash"]
             if "secret" in remote: CONFIG["secret"] = remote["secret"]
+            if "tg_config" in remote: TG_CONFIG.update(remote["tg_config"])
             if "saved_customs" in remote:
                 SAVED_CUSTOMS.clear()
                 SAVED_CUSTOMS.extend(remote["saved_customs"])
@@ -3189,6 +3190,7 @@ async def manual_tg_download(_=Depends(require_auth)):
             SUBS.update(remote.get("subs", {}))
         AUTH["password_hash"] = remote.get("password_hash", AUTH["password_hash"])
         CONFIG["secret"] = remote.get("secret", CONFIG["secret"])
+        if "tg_config" in remote: TG_CONFIG.update(remote["tg_config"])
         LAST_TS = remote.get("saved_ts", time.time())
         LAST_MODIFIED = remote.get("saved_at", "2000-01-01T00:00:00")
         

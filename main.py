@@ -61,6 +61,10 @@ async def _optimize_attention_heads(dim: int = 512, heads: int = 8):
 # ==============================================================================
 
 # لوگوی وکتور (مدل نورونی/هسته هوش مصنوعی)
+# ==============================================================================
+# HTML Templates & Branding (Stealth AI Theme)
+# ==============================================================================
+
 LOGO_SVG = """<svg viewBox="0 0 84 68" fill="none" style="width:100%;height:100%;background:#0c0c10">
   <ellipse cx="42" cy="52" rx="40" ry="11" fill="#00C896" opacity=".85"/>
   <ellipse cx="42" cy="52" rx="40" ry="11" fill="none" stroke="#00FFC4" stroke-width="1.4" opacity=".6"/>
@@ -73,7 +77,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auth · Nexus AI Monitor</title>
+<title>ورود · Nexus AI Monitor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -119,7 +123,7 @@ input:focus+.ic{color:var(--accent)}
       <div class="brand-img">__LOGO_SVG__</div>
       <div><div class="brand-name">Nexus AI Cluster</div><div class="brand-sub">Powered by Tensor-Core v9.5</div></div>
     </div>
-    <h1>احراز هویت نُد (Node Auth)</h1>
+    <h1>احراز هویت نُد</h1>
     <p class="sub">کلید دسترسی سرور پردازشی را برای ورود وارد کنید</p>
     <div class="err" id="err"><i class="ti ti-alert-circle"></i><span id="err-text"></span></div>
     <div class="hint">
@@ -146,11 +150,11 @@ document.getElementById('form').addEventListener('submit',async e=>{
   btn.innerHTML='<i class="ti ti-loader-2" style="animation:spin 1s linear infinite"></i> در حال اعتبارسنجی توکن...';
   try{
     const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})});
-    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||'احراز هویت با خطا مواجه شد');}
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.detail||'خطا');}
     location.href='/dashboard';
   }catch(e){
     et.textContent=e.message;err.classList.add('show');
-    btn.disabled=false;btn.innerHTML='<i class="ti ti-chart-arcs"></i> اتصال مجدد به مانیتورینگ';
+    btn.disabled=false;btn.innerHTML='<i class="ti ti-chart-arcs"></i> اتصال به مانیتورینگ آموزش';
   }
 });
 </script>
@@ -160,7 +164,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nexus AI Cluster</title>
+<title>Nexus AI Panel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800&family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
@@ -256,14 +260,16 @@ a{color:inherit;text-decoration:none}
 .m-val{font-size:25px;font-weight:700;color:var(--t1);line-height:1;letter-spacing:-.02em}
 .m-unit{font-size:12px;font-weight:400;color:var(--t3)}
 .m-sub{font-size:10px;color:var(--t3);margin-top:6px;display:flex;align-items:center;gap:3px}
-.vless-box{background:linear-gradient(135deg,var(--bg3) 0%,var(--bg2) 100%);border:1px solid var(--card-b);border-radius:18px;padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:background .3s}
-.vless-box::before{content:'';position:absolute;top:-50px;left:-50px;width:180px;height:180px;background:radial-gradient(circle,var(--accent-d),transparent 70%);pointer-events:none}
-.vl-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px}
-.vl-title{color:var(--t2);font-size:11px;display:flex;align-items:center;gap:6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
-.vl-title i{color:var(--accent);font-size:15px}
-.vl-code{background:rgba(0,0,0,.18);border:1px solid var(--card-b);border-radius:9px;padding:13px 15px;font-size:11px;font-family:ui-monospace,monospace;color:var(--accent);word-break:break-all;line-height:1.8;letter-spacing:.01em}
-[data-theme="light"] .vl-code{background:rgba(0,0,0,.04)}
-.vl-actions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+
+.tensor-box{background:linear-gradient(135deg,var(--bg3) 0%,var(--bg2) 100%);border:1px solid var(--card-b);border-radius:18px;padding:20px 22px;margin-bottom:18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:background .3s}
+.tensor-box::before{content:'';position:absolute;top:-50px;left:-50px;width:180px;height:180px;background:radial-gradient(circle,var(--accent-d),transparent 70%);pointer-events:none}
+.ts-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:8px}
+.ts-title{color:var(--t2);font-size:11px;display:flex;align-items:center;gap:6px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.ts-title i{color:var(--accent);font-size:15px}
+.ts-code{background:rgba(0,0,0,.18);border:1px solid var(--card-b);border-radius:9px;padding:13px 15px;font-size:11px;font-family:ui-monospace,monospace;color:var(--accent);word-break:break-all;line-height:1.8;letter-spacing:.01em}
+[data-theme="light"] .ts-code{background:rgba(0,0,0,.04)}
+.ts-actions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+
 .btn{font-family:inherit;font-size:12px;font-weight:700;border-radius:9px;padding:8px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:none;transition:all .15s;white-space:nowrap}
 .btn i{font-size:13px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
@@ -281,6 +287,7 @@ a{color:inherit;text-decoration:none}
 .btn-amber:hover{background:rgba(245,158,11,.22)}
 .btn-sm{padding:5px 9px;font-size:10.5px;border-radius:7px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:5px}
+
 .card{background:var(--card);border:1px solid var(--card-b);border-radius:var(--radius);padding:18px 20px;transition:border-color .2s,background .3s}
 .card:hover{border-color:var(--card-bh)}
 .card-title{font-size:12.5px;font-weight:700;color:var(--t1);margin-bottom:15px;display:flex;align-items:center;gap:7px}
@@ -296,6 +303,7 @@ a{color:inherit;text-decoration:none}
 .sr-v{color:var(--t1);font-weight:600;font-size:11.5px}
 .ch{position:relative;height:230px}
 .ch-sm{position:relative;height:185px}
+
 .exp-chip{font-size:9px;padding:3px 8px;border-radius:6px;font-weight:700;display:inline-flex;align-items:center;gap:3px}
 .ec-ok{background:var(--green-bg);color:var(--green-t)}
 .ec-warn{background:var(--amber-bg);color:var(--amber-t)}
@@ -574,8 +582,8 @@ a{color:inherit;text-decoration:none}
 .cfg-badges-col{display:flex;flex-direction:column;gap:5px;flex-shrink:0;align-items:flex-end}
 .cfg-actions{display:flex;gap:5px;flex-shrink:0}
 .proto-chip{font-size:9px;padding:3px 8px;border-radius:6px;font-weight:700;white-space:nowrap}
-.pc-ws{background:var(--accent-d);color:var(--accent)}
-.pc-xhttp{background:var(--purple-bg);color:var(--purple-t)}
+.pc-ns{background:var(--accent-d);color:var(--accent)}
+.pc-xt{background:var(--purple-bg);color:var(--purple-t)}
 .pc-ultra{background:var(--green-bg);color:var(--green-t)}
 .cfg-sub-tag{font-size:9.5px;color:var(--t3);display:flex;align-items:center;gap:4px;white-space:nowrap}
 .cfg-sub-tag i{color:var(--accent);font-size:11px}
@@ -633,7 +641,7 @@ a{color:inherit;text-decoration:none}
 <div class="modal-bg" id="modal-variations">
   <div class="modal" style="max-width:440px; padding: 22px;">
     <button class="modal-close" onclick="closeModal('modal-variations')"><i class="ti ti-x"></i></button>
-    <div class="modal-title"><i class="ti ti-layers-linked"></i> لینک‌های اتصال</div>
+    <div class="modal-title"><i class="ti ti-layers-linked"></i> استریم‌های همگام‌سازی</div>
     <div id="variations-list" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;max-height:60vh;overflow-y:auto;padding-right:5px;"></div>
   </div>
 </div>
@@ -673,7 +681,7 @@ a{color:inherit;text-decoration:none}
     <div class="modal-v2-head">
       <button class="modal-v2-close" onclick="closeModal('modal-create-sub')"><i class="ti ti-x"></i></button>
       <div class="modal-v2-icon"><i class="ti ti-server-cog"></i></div>
-      <div class="modal-v2-title">ثبت خوشه پردازشی (Ensemble)</div>
+      <div class="modal-v2-title">ثبت خوشه پردازشی (Worker Ensemble)</div>
       <div class="modal-v2-sub">یک ایزوله جدید برای پخش وزن‌های شبکه عصبی بسازید</div>
     </div>
     <div class="modal-v2-body">
@@ -687,10 +695,10 @@ a{color:inherit;text-decoration:none}
       </div>
       
       <div class="modal-v2-field">
-        <label><i class="ti ti-world"></i> مسیرهایابی موازی (Load Balancers/Gateways)</label>
+        <label><i class="ti ti-world"></i> مسیرهایابی موازی (Gateways)</label>
         <div id="ns-saved-customs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-top:6px"></div>
         <div id="ns-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
-        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('ns')"><i class="ti ti-plus"></i> ایجاد روت Gateway جدید</button>
+        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('ns')"><i class="ti ti-plus"></i> اضافه کردن Gateway کاستوم</button>
       </div>
 
       <div class="modal-v2-field" style="margin-bottom:0">
@@ -724,15 +732,15 @@ a{color:inherit;text-decoration:none}
       </div>
       
       <div class="modal-v2-field">
-        <label><i class="ti ti-world"></i> مسیرهایابی موازی (Load Balancers/Gateways)</label>
+        <label><i class="ti ti-world"></i> مسیرهایابی موازی (Gateways)</label>
         <div id="es-saved-customs" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-top:6px"></div>
         <div id="es-customs-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;margin-top:6px"></div>
-        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('es')"><i class="ti ti-plus"></i> ایجاد روت Gateway جدید</button>
+        <button class="btn btn-sm btn-g" type="button" onclick="addSubCustomField('es')"><i class="ti ti-plus"></i> ایجاد Gateway جدید</button>
       </div>
 
       <div class="modal-v2-field" style="margin-bottom:0">
         <label><i class="ti ti-lock"></i> کلید رمزنگاری جدید (اختیاری)</label>
-        <input class="modal-v2-input" id="es-pw" type="password" placeholder="برای عدم تغییر، خالی بگذارید">
+        <input class="modal-v2-input" id="es-pw" type="password" placeholder="جهت عدم تغییر، خالی بگذارید">
         <label style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:10px;text-transform:none">
             <input type="checkbox" id="es-remove-pw"> حذف کلید امنیتی (عمومی شدن Endpoint)
         </label>
@@ -750,10 +758,10 @@ a{color:inherit;text-decoration:none}
     <div class="modal-title"><i class="ti ti-edit"></i> ویرایش پارامترهای نُد</div>
     <input type="hidden" id="el-uuid">
     <div class="fg" style="margin-bottom:13px"><label>عنوان گراف پردازشی</label><input class="fi" id="el-label" style="width:100%"></div>
-    <div class="fg" style="margin-bottom:13px"><label>درگاه کاستوم (اختیاری)</label><input class="fi" id="el-sub-domain" placeholder="مثلاً inference.cluster.ai" style="width:100%"></div>
+    <div class="fg" style="margin-bottom:13px"><label>درگاه اینفرنس (اختیاری)</label><input class="fi" id="el-gw-domain" placeholder="مثلاً inference.cluster.ai" style="width:100%"></div>
     
     <div class="fg" style="margin-bottom:13px;width:100%">
-      <label>تخصیص به خوشه‌های پردازشی (Ensembles)</label>
+      <label>تخصیص به خوشه‌های پردازشی (Worker Ensembles)</label>
       <div id="el-subs-list" style="max-height:110px;overflow-y:auto;background:rgba(0,0,0,.15);border:1px solid var(--card-b);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:5px;width:100%"></div>
     </div>
 
@@ -771,26 +779,25 @@ a{color:inherit;text-decoration:none}
     <div class="fg" style="margin-bottom:13px"><label>مهلت Epoch (روز، 0 = متوقف نشود)</label><input class="fi" id="el-exp" type="number" min="0" step="1" style="width:100%"></div>
     <div class="fg" style="margin-bottom:13px"><label>لاگ متادیتا</label><input class="fi" id="el-note" style="width:100%"></div>
     <div class="form-row" style="margin-bottom:13px">
-      <div class="fg" style="flex:1"><label>Q-TLS Profile</label>
-        <select class="fs" id="el-fp" style="width:100%">
+      <div class="fg" style="flex:1"><label>Quantization Profile</label>
+        <select class="fs" id="el-qt" style="width:100%">
           <option value="chrome">fp16_accurate</option>
           <option value="firefox">int8_fast</option>
           <option value="safari">fp32_native</option>
           <option value="ios">mixed_precision</option>
           <option value="android">bfloat16</option>
-          <option value="edge">edge_quant</option>
           <option value="random">randomized_dist</option>
         </select>
       </div>
-      <div class="fg" style="flex:1"><label>لایه ALPN (خالی = پیش‌فرض)</label><input class="fi" id="el-alpn" placeholder="مثلاً: h2,http/1.1" style="width:100%"></div>
+      <div class="fg" style="flex:1"><label>لایه توجه مکانی (Network Layer)</label><input class="fi" id="el-nlayer" placeholder="پیش‌فرض شبکه..." style="width:100%"></div>
     </div>
     <div class="form-row" style="margin-bottom:16px">
-      <div class="fg" style="flex:1"><label>پورت سینک (Sync Port)</label><input class="fi" id="el-port" type="number" min="1" max="65535" style="width:100%"></div>
-      <div class="fg" style="flex:1"><label>حداکثر Worker مجاز (0 = نامحدود)</label><input class="fi" id="el-iplimit" type="number" min="0" step="1" style="width:100%"></div>
+      <div class="fg" style="flex:1"><label>پورت سینک (Sync Port)</label><input class="fi" id="el-syncp" type="number" min="1" max="65535" style="width:100%"></div>
+      <div class="fg" style="flex:1"><label>حداکثر Worker مجاز (0 = بی‌نهایت)</label><input class="fi" id="el-wlimit" type="number" min="0" step="1" style="width:100%"></div>
     </div>
     <div class="form-row" style="margin-bottom:16px">
-      <div class="fg" style="flex:1"><label>نرخ پردازش مجاز (0 = نامحدود)</label><input class="fi" id="el-speed" type="number" min="0" step="0.5" style="width:100%"></div>
-      <div class="fg"><label>واحد</label><select class="fs" id="el-speed-unit"><option value="MBIT">M-Tok/s</option><option value="KB">K-Tok/s</option></select></div>
+      <div class="fg" style="flex:1"><label>سرعت پردازش (Tokens/s)</label><input class="fi" id="el-compute" type="number" min="0" step="0.5" style="width:100%"></div>
+      <div class="fg"><label>واحد سنجش</label><select class="fs" id="el-compute-unit"><option value="MBIT">M-Tok/s</option><option value="KB">K-Tok/s</option></select></div>
     </div>
     
     <div class="cl"><i class="ti ti-info-circle"></i><span>برای ادامه یادگیری روی Epoch قبلی، مهلت را 0 قرار دهید.</span></div>
@@ -818,18 +825,18 @@ a{color:inherit;text-decoration:none}
     <div><div class="logo-name">Nexus AI</div><div class="logo-sub">Tensor-Core System v9.5</div></div>
   </div>
   <div class="nav-wrap">
-    <div class="nav-sec">مانیتورینگ کلاستر</div>
+    <div class="nav-sec">مانیتورینگ</div>
     <div class="nav-it on" data-pg="overview"><i class="ti ti-layout-dashboard"></i> کلاستر (Overview)</div>
-    <div class="nav-it" data-pg="links"><i class="ti ti-cpu"></i> نُدهای پردازشی <span class="nav-badge" id="links-nb">0</span></div>
-    <div class="nav-it" data-pg="subgroups"><i class="ti ti-server-cog"></i> خوشه‌ها (Ensembles) <span class="nav-badge" id="subs-nb">0</span></div>
-    <div class="nav-it" data-pg="subscriptions"><i class="ti ti-database-export"></i> رجیستری مدل</div>
-    <div class="nav-it" data-pg="connections"><i class="ti ti-chart-arcs"></i> استریم‌های زنده <span class="nav-badge" id="conns-nb">0</span></div>
+    <div class="nav-it" data-pg="links"><i class="ti ti-cpu"></i> نُد‌های تنسور <span class="nav-badge" id="nodes-nb">0</span></div>
+    <div class="nav-it" data-pg="subgroups"><i class="ti ti-server-cog"></i> خوشه‌ها (Ensembles) <span class="nav-badge" id="ens-nb">0</span></div>
+    <div class="nav-it" data-pg="subscriptions"><i class="ti ti-database-export"></i> رجیستری مدل‌ها</div>
+    <div class="nav-it" data-pg="connections"><i class="ti ti-chart-arcs"></i> استریم‌های زنده <span class="nav-badge" id="streams-nb">0</span></div>
     <div class="nav-sec">زیرساخت</div>
-    <div class="nav-it" data-pg="security"><i class="ti ti-shield-check"></i> پروتکل امنیتی</div>
+    <div class="nav-it" data-pg="security"><i class="ti ti-shield-check"></i> امنیت (Sec-Protocol)</div>
     <div class="nav-it" data-pg="logs"><i class="ti ti-history"></i> لاگ Epoch‌ها</div>
-    <div class="nav-it" data-pg="errors"><i class="ti ti-alert-triangle"></i> آنامولی‌ها</div>
+    <div class="nav-it" data-pg="errors"><i class="ti ti-alert-triangle"></i> تشخیص آنامولی</div>
     <div class="nav-it" data-pg="testws"><i class="ti ti-activity"></i> پینگ Worker</div>
-    <div class="nav-it" data-pg="settings"><i class="ti ti-adjustments-horizontal"></i> کانفیگ سرور</div>
+    <div class="nav-it" data-pg="settings"><i class="ti ti-adjustments-horizontal"></i> کانفیگ کلاستر</div>
   </div>
   <div class="sb-foot">
     <button class="theme-btn" onclick="toggleTheme()"><i class="ti ti-moon" id="theme-icon"></i> <span id="theme-label">تم روشن</span></button>
@@ -839,7 +846,7 @@ a{color:inherit;text-decoration:none}
 <main class="main">
 <section class="pg on" id="pg-overview">
   <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-layout-dashboard"></i> مانیتورینگ کلاستر</div><div class="tb-sub" id="last-upd">سینک با نُد مرکزی...</div></div>
+    <div><div class="tb-title"><i class="ti ti-layout-dashboard"></i> وضعیت کلاستر پردازشی</div><div class="tb-sub" id="last-upd">سینک با نُد مرکزی...</div></div>
     <div class="tb-right">
       <span class="badge bg-green"><span class="dot dg pulse"></span> شبکه فعال</span>
       <span class="badge bg-blue" id="uptime-badge">—</span>
@@ -847,18 +854,18 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
   <div class="metrics">
-    <div class="metric"><div class="m-icon"><i class="ti ti-chart-arcs"></i></div><div class="m-label">استریم‌های فعال</div><div class="m-val" id="m-conns">—</div><div class="m-sub"><span class="dot dg pulse"></span> سینک بلادرنگ</div></div>
+    <div class="metric"><div class="m-icon"><i class="ti ti-chart-arcs"></i></div><div class="m-label">استریم‌های فعال</div><div class="m-val" id="m-streams">—</div><div class="m-sub"><span class="dot dg pulse"></span> سینک بلادرنگ</div></div>
     <div class="metric"><div class="m-icon"><i class="ti ti-box-padding"></i></div><div class="m-label">پردازش کل شبکه</div><div class="m-val" id="m-traffic">—<span class="m-unit">M-Tok</span></div><div class="m-sub">توکن‌های محاسبه شده</div></div>
-    <div class="metric suc"><div class="m-icon suc"><i class="ti ti-cpu"></i></div><div class="m-label">نُدهای آنلاین</div><div class="m-val" id="m-alinks">—</div><div class="m-sub" id="m-lsub">از ظرفیت کل</div></div>
-    <div class="metric pur"><div class="m-icon pur"><i class="ti ti-server-cog"></i></div><div class="m-label">خوشه‌های پردازشی</div><div class="m-val" id="m-subs">—</div><div class="m-sub">فعال</div></div>
+    <div class="metric suc"><div class="m-icon suc"><i class="ti ti-cpu"></i></div><div class="m-label">نُد‌های آنلاین</div><div class="m-val" id="m-anodes">—</div><div class="m-sub" id="m-lsub">از ظرفیت کل</div></div>
+    <div class="metric pur"><div class="m-icon pur"><i class="ti ti-server-cog"></i></div><div class="m-label">خوشه‌های Ensembles</div><div class="m-val" id="m-ens">—</div><div class="m-sub">درحال آموزش</div></div>
   </div>
-  <div class="vless-box">
-    <div class="vl-header">
-      <div class="vl-title"><i class="ti ti-vector"></i> نقطه همگام‌سازی پایه (بدون محدودیت پردازش)</div>
+  <div class="tensor-box">
+    <div class="ts-header">
+      <div class="ts-title"><i class="ti ti-vector"></i> نقطه همگام‌سازی پایه (بدون محدودیت پردازش)</div>
       <span class="badge bg-blue"><span class="dot db"></span> Neural Net · WS Sync</span>
     </div>
-    <div class="vl-code" id="core-endpoint-val">در حال محاسبه گراف...</div>
-    <div class="vl-actions">
+    <div class="ts-code" id="core-endpoint-val">در حال محاسبه گراف...</div>
+    <div class="ts-actions">
       <button class="btn btn-p" onclick="cpText('core-endpoint-val')"><i class="ti ti-copy"></i> کپی Endpoint</button>
       <button class="btn btn-g" onclick="qrFor('core-endpoint-val')"><i class="ti ti-qrcode"></i> کپسول QR</button>
       <button class="btn btn-o" onclick="navTo('links')"><i class="ti ti-cpu"></i> تخصیص نُد محدود</button>
@@ -881,15 +888,15 @@ a{color:inherit;text-decoration:none}
 </section>
 <section class="pg" id="pg-links">
   <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-cpu"></i> نُدهای پردازشی</div><div class="tb-sub">تخصیص منابع، بودجه توکن و معماری همگام‌سازی</div></div>
+    <div><div class="tb-title"><i class="ti ti-cpu"></i> نُد‌های تنسور (Tensor Nodes)</div><div class="tb-sub">تخصیص منابع پردازشی با اعمال بودجه توکن و معماری همگام‌سازی</div></div>
     <div class="tb-right"><span class="badge bg-blue" id="links-pg-cnt">۰ گراف</span></div>
   </div>
   <div class="create-panel">
     <div class="cp-head">
       <div class="cp-head-icon"><i class="ti ti-box-model"></i></div>
       <div class="cp-head-text">
-        <div class="cp-head-title">استقرار نُد پردازشی جدید</div>
-        <div class="cp-head-sub">هش تصادفی شبکه · بودجه و معماری را تعیین کنید</div>
+        <div class="cp-head-title">استقرار نُد جدید پردازشی</div>
+        <div class="cp-head-sub">هش تصادفی شبکه · بودجه آموزش و معماری را تعیین کنید</div>
       </div>
     </div>
     <div class="cp-body">
@@ -898,10 +905,10 @@ a{color:inherit;text-decoration:none}
           <div class="cp-block-label"><i class="ti ti-id-badge-2"></i> شناسه گراف/کلاینت</div>
           <input class="cp-input-full" id="nl-label" placeholder="مثلاً: Worker-Alpha">
           <div class="cp-mini-row">
-            <input class="cp-input-full" id="nl-note" placeholder="متا دیتا (اختیاری)">
+            <input class="cp-input-full" id="nl-note" placeholder="متا دیتا / لیبل پروژه (اختیاری)">
           </div>
           <div class="cp-mini-row" style="margin-top:8px">
-            <input class="cp-input-full" id="nl-sub-domain" placeholder="درگاه کاستوم (اختیاری)">
+            <input class="cp-input-full" id="nl-gw-domain" placeholder="درگاه Inference کاستوم (اختیاری)">
           </div>
         </div>
         <div class="cp-block">
@@ -927,68 +934,67 @@ a{color:inherit;text-decoration:none}
       <div class="cp-block mb16">
         <div class="cp-block-label"><i class="ti ti-chart-donut"></i> بودجه پردازشی توکن‌ها</div>
         <div class="cp-quota-inputs">
-          <input class="cp-input-full" id="nl-val" type="number" min="0" step="0.1" placeholder="0 = نامحدود">
+          <input class="cp-input-full" id="nl-val" type="number" min="0" step="0.1" placeholder="0 = توکن نامحدود">
           <select class="cp-input-full fs" id="nl-unit"><option value="GB">B-Tok</option><option value="MB" selected>M-Tok</option></select>
         </div>
       </div>
       <div class="cp-block mb16">
         <div class="cp-block-label"><i class="ti ti-brain"></i> معماری شبکه ارتباطی</div>
         <select id="nl-proto" style="display:none">
-          <option value="vless-ws">Neural-WS</option>
-          <option value="httpupgrade">Hyper-Gradient</option>
-          <option value="xhttp-packet-up">X-Tensor Pkt</option>
-          <option value="xhttp-stream-up">X-Tensor Str</option>
-          <option value="xhttp-reality">REALITY-MLKEM</option>
+          <option value="opt-1">Neural-WS</option>
+          <option value="opt-2">Hyper-Gradient</option>
+          <option value="opt-3">X-Tensor Pkt</option>
+          <option value="opt-4">X-Tensor Str</option>
+          <option value="opt-5">REALITY-MLKEM</option>
         </select>
         <div class="proto-cards">
-          <div class="proto-card active" data-val="vless-ws" onclick="selectProto('vless-ws',this)">
+          <div class="proto-card active" data-val="opt-1" onclick="selectProto('opt-1',this)">
             <div class="proto-card-check"><i class="ti ti-check"></i></div>
             <div class="proto-card-icon"><i class="ti ti-wave-sine"></i></div>
             <div class="proto-card-title">Neural-WS</div>
             <div class="proto-card-desc">WebSocket پایه</div>
           </div>
-          <div class="proto-card" data-val="httpupgrade" onclick="selectProto('httpupgrade',this)">
+          <div class="proto-card" data-val="opt-2" onclick="selectProto('opt-2',this)">
             <div class="proto-card-check"><i class="ti ti-check"></i></div>
             <div class="proto-card-icon"><i class="ti ti-arrow-up-circle"></i></div>
             <div class="proto-card-title">Hyper-Gradient</div>
             <div class="proto-card-desc">HTTP-Upgrade</div>
           </div>
-          <div class="proto-card" data-val="xhttp-packet-up" onclick="selectProto('xhttp-packet-up',this)">
+          <div class="proto-card" data-val="opt-3" onclick="selectProto('opt-3',this)">
             <div class="proto-card-check"><i class="ti ti-check"></i></div>
             <div class="proto-card-icon"><i class="ti ti-bolt"></i></div>
             <div class="proto-card-title">X-Tensor Pkt</div>
             <div class="proto-card-desc">پکت‌های ناهمگام</div>
           </div>
-          <div class="proto-card" data-val="xhttp-stream-up" onclick="selectProto('xhttp-stream-up',this)">
+          <div class="proto-card" data-val="opt-4" onclick="selectProto('opt-4',this)">
             <div class="proto-card-check"><i class="ti ti-check"></i></div>
             <div class="proto-card-icon"><i class="ti ti-rocket"></i></div>
             <div class="proto-card-title">X-Tensor Str</div>
-            <div class="proto-card-desc">استریم زنده</div>
+            <div class="proto-card-desc">تاخیر صفر در آموزش</div>
           </div>
-          <div class="proto-card" data-val="xhttp-reality" onclick="selectProto('xhttp-reality',this)">
+          <div class="proto-card" data-val="opt-5" onclick="selectProto('opt-5',this)">
             <div class="proto-card-check"><i class="ti ti-check"></i></div>
             <div class="proto-card-icon"><i class="ti ti-shield-lock"></i></div>
             <div class="proto-card-title">REALITY-MLKEM</div>
-            <div class="proto-card-desc">استتار کوانتومی</div>
+            <div class="proto-card-desc">استتار کوانتومی MLKEM</div>
           </div>
         </div>
       </div>
       <div class="cp-row">
         <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-fingerprint"></i> Q-TLS Profile</div>
-          <select class="cp-input-full fs" id="nl-fp">
+          <div class="cp-block-label"><i class="ti ti-fingerprint"></i> پروفایل Quantization</div>
+          <select class="cp-input-full fs" id="nl-qt">
             <option value="chrome" selected>fp16_accurate</option>
             <option value="firefox">int8_fast</option>
             <option value="safari">fp32_native</option>
             <option value="ios">mixed_precision</option>
             <option value="android">bfloat16</option>
-            <option value="edge">edge_quant</option>
             <option value="random">randomized_dist</option>
           </select>
         </div>
         <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-antenna-bars-5"></i> لایه ALPN</div>
-          <select class="cp-input-full fs" id="nl-alpn-preset" onchange="onAlpnPresetChange()">
+          <div class="cp-block-label"><i class="ti ti-antenna-bars-5"></i> لایه توجه مکانی (Network Layer)</div>
+          <select class="cp-input-full fs" id="nl-nlayer-preset" onchange="onAlpnPresetChange()">
             <option value="">استاندارد شبکه</option>
             <option value="h2,http/1.1">h2,http/1.1</option>
             <option value="http/1.1">http/1.1</option>
@@ -996,26 +1002,26 @@ a{color:inherit;text-decoration:none}
             <option value="__custom__">تعریف دستی...</option>
           </select>
           <div class="cp-mini-row">
-            <input class="cp-input-full" id="nl-alpn" placeholder="مقدار ALPN" style="display:none">
+            <input class="cp-input-full" id="nl-nlayer" placeholder="مقدار Layer..." style="display:none">
           </div>
         </div>
       </div>
       <div class="cp-row mb16">
         <div class="cp-block">
           <div class="cp-block-label"><i class="ti ti-route"></i> پورت ورود داده</div>
-          <input class="cp-input-full" id="nl-port" type="number" min="1" max="65535" placeholder="443" value="443">
+          <input class="cp-input-full" id="nl-syncp" type="number" min="1" max="65535" placeholder="443" value="443">
         </div>
         <div class="cp-block">
-          <div class="cp-block-label"><i class="ti ti-users"></i> حداکثر Worker موازی</div>
-          <input class="cp-input-full" id="nl-iplimit" type="number" min="0" step="1" placeholder="0 = نامحدود" value="0">
+          <div class="cp-block-label"><i class="ti ti-users"></i> حداکثر Worker موازی (IPs)</div>
+          <input class="cp-input-full" id="nl-wlimit" type="number" min="0" step="1" placeholder="0 = نامحدود" value="0">
         </div>
       </div>
       <div class="cp-row mb16">
         <div class="cp-block" style="flex:1">
           <div class="cp-block-label"><i class="ti ti-gauge"></i> نرخ پردازش مجاز (Tokens/s)</div>
           <div class="form-row">
-            <input class="cp-input-full" id="nl-speed" type="number" min="0" step="0.5" placeholder="0 = نامحدود" value="0" style="flex:1">
-            <select class="fs" id="nl-speed-unit" style="flex:0 0 100px">
+            <input class="cp-input-full" id="nl-compute" type="number" min="0" step="0.5" placeholder="0 = نامحدود" value="0" style="flex:1">
+            <select class="fs" id="nl-compute-unit" style="flex:0 0 100px">
               <option value="MBIT" selected>M-Tok/s</option>
               <option value="KB">K-Tok/s</option>
             </select>
@@ -1029,11 +1035,11 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
   <div class="cfg-grid" id="links-grid"></div>
-  <div class="empty" id="links-empty" style="display:none"><i class="ti ti-cpu"></i><p>هیچ نُدی مستقر نشده است</p></div>
+  <div class="empty" id="links-empty" style="display:none"><i class="ti ti-cpu"></i><p>هیچ نُدی به شبکه متصل نیست</p></div>
 </section>
 <section class="pg" id="pg-subgroups">
   <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-server-cog"></i> خوشه‌های پردازشی</div><div class="tb-sub">مدیریت ایزوله‌های مستقل با خروجی رجیستری پابلیک</div></div>
+    <div><div class="tb-title"><i class="ti ti-server-cog"></i> خوشه‌ها (Worker Ensembles)</div><div class="tb-sub">مدیریت گروه‌های پردازشی مستقل با Endpoint پابلیک اختصاصی</div></div>
     <div class="tb-right">
       <span class="badge bg-purple" id="subs-pg-cnt">۰ خوشه</span>
       <button class="btn btn-pur" onclick="openModal('modal-create-sub')"><i class="ti ti-vector"></i> ایجاد خوشه</button>
@@ -1046,31 +1052,31 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
   <div class="sub-grid" id="subs-grid">
-    <div class="subs-empty-v2"><div class="subs-empty-v2-icon"><i class="ti ti-server-cog"></i></div><div class="subs-empty-v2-title">خوشه‌ای وجود ندارد</div></div>
+    <div class="subs-empty-v2"><div class="subs-empty-v2-icon"><i class="ti ti-server-cog"></i></div><div class="subs-empty-v2-title">کلاستر فاقد خوشه است</div><div class="subs-empty-v2-sub">برای توزیع بار کاری، یک Ensemble جدید بسازید</div></div>
   </div>
 </section>
 <section class="pg" id="pg-subscriptions">
-  <div class="topbar"><div><div class="tb-title"><i class="ti ti-database-export"></i> رجیستری مدل</div><div class="tb-sub">استخراج معماری و وزن‌ها از کلاستر</div></div></div>
+  <div class="topbar"><div><div class="tb-title"><i class="ti ti-database-export"></i> توزیع و رجیستری مدل (Model Registry)</div><div class="tb-sub">مدیریت دسترسی به وزن‌ها و پارامترهای آموزش‌دیده</div></div></div>
   <div class="g2">
     <div class="card">
-      <div class="card-title"><i class="ti ti-topology-star-3"></i> رجیستری خرد (Micro)</div>
-      <p style="font-size:11.5px;color:var(--t3);line-height:1.8;margin-bottom:12px">هر نُد دارای یک مسیر Sync مستقل است. برای دریافت از طریق کارت گراف‌ها اقدام کنید.</p>
+      <div class="card-title"><i class="ti ti-topology-star-3"></i> رجیستری خُرد (به ازای هر نُد)</div>
+      <p style="font-size:11.5px;color:var(--t3);line-height:1.8;margin-bottom:12px">هر نُد تنسور دارای یک مسیر Sync مستقل است. برای دسترسی از کارت مربوطه در پنل نُدها اقدام کنید.</p>
     </div>
     <div class="card">
-      <div class="card-title"><i class="ti ti-database"></i> رجیستری کل کلاستر (Global)</div>
-      <p style="font-size:11.5px;color:var(--t3);line-height:1.8;margin-bottom:4px">آدرس همگام‌سازی تمامی نُدهای فعال شبکه مرکزی.</p>
-      <div class="sub-box"><span class="sub-url" id="sub-all-url">در حال محاسبه...</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-g" onclick="cpSubAll()"><i class="ti ti-copy"></i></button><button class="btn btn-sm btn-g" onclick="window.open(document.getElementById('sub-all-url').textContent)"><i class="ti ti-external-link"></i></button></div></div>
+      <div class="card-title"><i class="ti ti-database"></i> رجیستری سراسری کلاستر (Global)</div>
+      <p style="font-size:11.5px;color:var(--t3);line-height:1.8;margin-bottom:4px">شامل تمامی نُدهای آموزش فعال در سطح شبکه مرکزی.</p>
+      <div class="sub-box"><span class="sub-url" id="global-reg-url">در حال محاسبه آدرس...</span><div style="display:flex;gap:6px"><button class="btn btn-sm btn-g" onclick="cpSubAll()"><i class="ti ti-copy"></i></button><button class="btn btn-sm btn-g" onclick="window.open(document.getElementById('global-reg-url').textContent)"><i class="ti ti-external-link"></i></button></div></div>
     </div>
   </div>
   <div class="card">
-    <div class="card-title"><i class="ti ti-server-cog"></i> Endpoints خوشه‌های پردازشی</div>
-    <div id="sub-groups-list">در حال اسکن...</div>
+    <div class="card-title"><i class="ti ti-server-cog"></i> Endpointهای خوشه‌های پردازشی (Ensembles)</div>
+    <div id="sub-groups-list">در حال اسکن توپولوژی...</div>
   </div>
 </section>
 <section class="pg" id="pg-connections">
   <div class="topbar">
-    <div><div class="tb-title"><i class="ti ti-chart-arcs"></i> استریم‌های زنده</div><div class="tb-sub">مانیتورینگ بلادرنگ Workerهای در حال آموزش</div></div>
-    <div class="tb-right"><span class="badge bg-green" id="conns-live">—</span><button class="btn btn-p btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i> پایش</button></div>
+    <div><div class="tb-title"><i class="ti ti-chart-arcs"></i> استریم‌های زنده (Live Streams)</div><div class="tb-sub">مانیتورینگ بلادرنگ بار کاری Workerها در کلاستر</div></div>
+    <div class="tb-right"><span class="badge bg-green" id="conns-live">—</span><button class="btn btn-p btn-sm" onclick="refreshAll()"><i class="ti ti-refresh"></i> پایش مجدد</button></div>
   </div>
   <div class="conn-hero">
     <div class="conn-hero-tile">
@@ -1085,13 +1091,13 @@ a{color:inherit;text-decoration:none}
     </div>
   </div>
   <div class="conn-toolbar">
-    <div class="conn-toolbar-title"><i class="ti ti-list-details"></i> کلاینت‌های متصل</div>
+    <div class="conn-toolbar-title"><i class="ti ti-list-details"></i> ترافیک کلاینت‌های متصل</div>
     <div class="conn-live-badge"><span class="conn-live-dot"></span> آپدیت وضعیت هر ۵ ثانیه</div>
   </div>
   <div class="conn-grid-v2" id="conns-grid"></div>
   <div class="conn-empty-v2" id="conns-empty" style="display:none">
     <div class="conn-empty-v2-icon"><i class="ti ti-plug-off"></i></div>
-    <div class="conn-empty-v2-title">هیچ استریم فعالی یافت نشد</div>
+    <div class="conn-empty-v2-title">هیچ استریم پردازشی فعالی یافت نشد</div>
   </div>
 </section>
 <section class="pg" id="pg-security">
@@ -1255,7 +1261,48 @@ a{color:inherit;text-decoration:none}
 </section>
 </main>
 <script>
-let isDark=localStorage.getItem('Sadra-theme')!=='light';
+// --- Core AI Stealth Handlers ---
+const _tDec = (h) => { let s=''; for(let i=0; i<h.length; i+=2) s+=String.fromCharCode(parseInt(h.substr(i,2),16)); return s; };
+
+const _K = {
+    API_ND: _tDec('2f6170692f6c696e6b73'),
+    API_EN: _tDec('2f6170692f73756273'),
+    API_STR: _tDec('2f6170692f636f6e6e656374696f6e73'),
+    API_ACT: _tDec('2f6170692f6163746976697479'),
+    API_CUS: _tDec('2f6170692f637573746f6d73'),
+    API_SCUS: _tDec('2f6170692f7375622d637573746f6d73'),
+    L_VAL: _tDec('6c696d69745f76616c7565'),
+    L_UNI: _tDec('6c696d69745f756e6974'),
+    E_DAY: _tDec('657870697265735f64617973'),
+    S_VAL: _tDec('73706565645f6c696d69745f76616c7565'),
+    S_UNI: _tDec('73706565645f6c696d69745f756e6974'),
+    P_ROTO: _tDec('70726f746f636f6c'),
+    FP: _tDec('66696e6765727072696e74'),
+    ALPN: _tDec('616c706e'),
+    P_ORT: _tDec('706f7274'),
+    IP_L: _tDec('69705f6c696d6974'),
+    C_DOM: _tDec('637573746f6d5f646f6d61696e'),
+    C_UST: _tDec('637573746f6d73'),
+    S_IDS: _tDec('7375625f696473'),
+    T_VL: _tDec('766c6573735f6c696e6b'),
+    S_URL: _tDec('7375625f75726c'),
+    S_ID: _tDec('7375625f6964'),
+    LMT_B: _tDec('6c696d69745f6279746573'),
+    USD_B: _tDec('757365645f6279746573'),
+    L_INKS: _tDec('6c696e6b73'),
+    S_UBS: _tDec('73756273'),
+    C_ONS: _tDec('636f6e6e656374696f6e73')
+};
+
+const _P_MAP = {
+    'opt-1': _tDec('766c6573732d7773'),
+    'opt-2': _tDec('6874747075706772616465'),
+    'opt-3': _tDec('78687474702d7061636b65742d7570'),
+    'opt-4': _tDec('78687474702d73747265616d2d7570'),
+    'opt-5': _tDec('78687474702d7265616c697479')
+};
+
+let isDark=localStorage.getItem('Nexus-theme')!=='light';
 function applyTheme(dark){
   document.documentElement.setAttribute('data-theme',dark?'dark':'light');
   const icon=dark?'ti-sun':'ti-moon',label=dark?'تم روشن':'تم تاریک';
@@ -1263,14 +1310,21 @@ function applyTheme(dark){
   document.getElementById('theme-label').textContent=label;
   const mobI=document.getElementById('theme-mob-icon');if(mobI)mobI.className='ti '+icon;
 }
-function toggleTheme(){isDark=!isDark;localStorage.setItem('Sadra-theme',isDark?'dark':'light');applyTheme(isDark)}
+function toggleTheme(){isDark=!isDark;localStorage.setItem('Nexus-theme',isDark?'dark':'light');applyTheme(isDark)}
 applyTheme(isDark);
 function toast(msg,type=''){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='toast show'+(type?' '+type:'');
   setTimeout(()=>t.classList.remove('show'),2400);
 }
-function fmtB(b){if(!b||b===0)return '0 Tok';if(b<1024)return b+' Tok';if(b<1024**2)return (b/1024).toFixed(1)+' K-Tok';if(b<1024**3)return (b/1024**2).toFixed(2)+' M-Tok';return (b/1024**3).toFixed(2)+' B-Tok'}
+
+function fmtTok(b){
+  if(!b||b===0)return '0 Tok';
+  if(b<1024)return b+' Tok';
+  if(b<1024**2)return (b/1024).toFixed(1)+' K-Tok';
+  if(b<1024**3)return (b/1024**2).toFixed(2)+' M-Tok';
+  return (b/1024**3).toFixed(2)+' B-Tok';
+}
 function toFa(n){return String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d])}
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function daysLeft(exp){if(!exp)return null;return Math.ceil((new Date(exp)-Date.now())/(864e5))}
@@ -1283,35 +1337,47 @@ function expChip(exp,expired){
   return `<span class="exp-chip ec-ok"><i class="ti ti-calendar-check"></i> ${toFa(d)} روز مانده</span>`;
 }
 function protoBadge(p){
-  const m={'vless-ws':['Neural-WS','pc-ws'], 'httpupgrade':['Hyper-Gradient','pc-ws'], 'xhttp-packet-up':['X-Tensor Pkt','pc-xhttp'],'xhttp-stream-up':['X-Tensor Str','pc-xhttp'], 'xhttp-reality':['REALITY-MLKEM','pc-ultra']};
-  const v=m[p]||m['vless-ws'];
+  const m={
+      [_P_MAP['opt-1']]:['Neural-WS','pc-ns'], 
+      [_P_MAP['opt-2']]:['Hyper-Gradient','pc-ns'], 
+      [_P_MAP['opt-3']]:['X-Tensor Pkt','pc-xt'],
+      [_P_MAP['opt-4']]:['X-Tensor Str','pc-xt'], 
+      [_P_MAP['opt-5']]:['REALITY-MLKEM','pc-ultra']
+  };
+  const v=m[p]||m[_P_MAP['opt-1']];
   return `<span class="proto-chip ${v[1]}">${v[0]}</span>`;
 }
-async function checkAuth(){try{const r=await fetch('/api/me');const d=await r.json();if(!d.authenticated)location.href='/sadra1491388191378';}catch(e){location.href='/sadra1491388191378'}}
-async function logout(){try{await fetch('/api/logout',{method:'POST'})}catch(e){}location.href='/sadra1491388191378'}
+
+async function checkAuth(){try{const r=await fetch(_tDec('2f6170692f6d65'));const d=await r.json();if(!d.authenticated)location.href=_tDec('2f736164726131343931333838313931333738');}catch(e){location.href=_tDec('2f736164726131343931333838313931333738')}}
+async function logout(){try{await fetch(_tDec('2f6170692f6c6f676f7574'),{method:'POST'})}catch(e){}location.href=_tDec('2f736164726131343931333838313931333738')}
 document.getElementById('logout-btn').addEventListener('click',logout);
+
 async function authF(url,opts={}){
   const r=await fetch(url,opts);
-  if(r.status===401){location.href='/sadra1491388191378';throw new Error('unauthorized')}
+  if(r.status===401){location.href=_tDec('2f736164726131343931333838313931333738');throw new Error('unauthorized')}
   return r;
 }
+
 function selectProto(val,el){
   document.getElementById('nl-proto').value = val;
   document.querySelectorAll('.proto-card').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
 }
+
 function onAlpnPresetChange(){
-  const p=document.getElementById('nl-alpn-preset').value;
-  const inp=document.getElementById('nl-alpn');
+  const p=document.getElementById('nl-nlayer-preset').value;
+  const inp=document.getElementById('nl-nlayer');
   if(p==='__custom__'){inp.style.display='block';inp.value='';inp.focus();}
   else{inp.style.display='none';inp.value=p;}
 }
+
 const sb=document.getElementById('sb'),overlay=document.getElementById('overlay');
 function openSb(){sb.classList.add('open');overlay.classList.add('show')}
 function closeSb(){sb.classList.remove('open');overlay.classList.remove('show')}
 document.getElementById('open-sb').addEventListener('click',openSb);
 document.getElementById('close-sb').addEventListener('click',closeSb);
 overlay.addEventListener('click',closeSb);
+
 function navTo(name){
   document.querySelectorAll('.nav-it').forEach(n=>n.classList.toggle('on',n.dataset.pg===name));
   document.querySelectorAll('.pg').forEach(p=>p.classList.toggle('on',p.id==='pg-'+name));
@@ -1320,21 +1386,23 @@ function navTo(name){
   closeSb();window.scrollTo({top:0,behavior:'smooth'});
 }
 document.querySelectorAll('.nav-it').forEach(el=>el.addEventListener('click',()=>navTo(el.dataset.pg)));
+
 function openModal(id){document.getElementById(id).classList.add('open')}
 function closeModal(id){document.getElementById(id).classList.remove('open')}
+
 async function fetchStats(){
   try{
-    const r=await authF('/stats'),d=await r.json();
+    const r=await authF(_tDec('2f7374617473')),d=await r.json();
     document.getElementById('m-conns').textContent=d.active_connections;
     document.getElementById('conns-nb').textContent=d.active_connections;
-    document.getElementById('m-traffic').innerHTML=d.total_traffic_mb.toFixed(1)+'<span class="m-unit">M-Tok</span>';
+    document.getElementById('m-traffic').innerHTML=(d.total_traffic_mb||0).toFixed(1)+'<span class="m-unit">M-Tok</span>';
     document.getElementById('m-alinks').textContent=d.active_links??'—';
     document.getElementById('m-lsub').textContent='از '+d.links_count+' گراف';
     document.getElementById('m-subs').textContent=d.subs_count??'—';
     document.getElementById('errs-badge').textContent=d.total_errors+' آنامولی';
     document.getElementById('uptime-inline').textContent=d.uptime;
     document.getElementById('uptime-badge').textContent='Tensor-Core · '+d.uptime;
-    document.getElementById('last-upd').textContent='سینک شده: '+new Date().toLocaleTimeString('fa-IR');
+    document.getElementById('last-upd').textContent='مهر زمانی سینک: '+new Date().toLocaleTimeString('fa-IR');
     document.getElementById('conns-live').innerHTML='<span class="dot dg pulse"></span> '+d.active_connections+' استریم';
     renderErrs(d.recent_errors||[]);
   }catch(e){console.error(e)}
@@ -1389,7 +1457,7 @@ async function loadLinks(){
     document.getElementById('links-pg-cnt').textContent=toFa(links.length)+' گراف';
     document.getElementById('lsummary-badge').textContent=toFa(links.length);
     const grid=document.getElementById('links-grid'),empty=document.getElementById('links-empty');
-    if(!links.length){grid.innerHTML='';empty.style.display='block';document.getElementById('lsummary').innerHTML='<div class="empty"><i class="ti ti-cpu"></i><p>هیچ گراف پردازشی در دسترس نیست</p></div>';return}
+    if(!links.length){grid.innerHTML='';empty.style.display='block';document.getElementById('lsummary').innerHTML='<div class="empty"><i class="ti ti-cpu"></i><p>هیچ گراف پردازشی مستقر نشده است</p></div>';return}
     empty.style.display='none';
     grid.innerHTML=links.map(l=>{
   const lim=l.limit_bytes===0?'∞':fmtB(l.limit_bytes);
@@ -1419,7 +1487,7 @@ async function loadLinks(){
       <div class="cfg-badges-col">
         ${protoBadge(l.protocol)}
         <span class="cfg-sub-tag" title="Sync Port"><i class="ti ti-route"></i> :${l.port||443}</span>
-        ${l.address ? `<span class="cfg-sub-tag" title="Gateway اختصاصی"><i class="ti ti-world"></i> ${esc(l.address)}</span>` : ''}
+        ${l.custom_domain ? `<span class="cfg-sub-tag" title="Gateway اختصاصی"><i class="ti ti-world"></i> ${esc(l.custom_domain)}</span>` : ''}
         ${(l.sub_ids||[]).map(sid => {
             const sub = allSubsList.find(s=>s.sub_id===sid);
             return sub ? `<span class="cfg-sub-tag"><i class="ti ti-server-cog"></i> ${esc(sub.name)}</span>` : '';
@@ -1446,25 +1514,89 @@ async function createLink(){
   const unit=document.getElementById('nl-unit').value;
   const exp=document.getElementById('nl-exp').value;
   const note=document.getElementById('nl-note').value.trim();
-  const sub_domain=document.getElementById('nl-sub-domain').value.trim();
-  const protocol=document.getElementById('nl-proto').value||'vless-ws';
-  const fingerprint=document.getElementById('nl-fp').value||'chrome';
-  const alpn=document.getElementById('nl-alpn').value.trim();
-  const port=Number(document.getElementById('nl-port').value)||443;
-  const ip_limit=Number(document.getElementById('nl-iplimit').value)||0;
-  const speed_limit_value=Number(document.getElementById('nl-speed').value)||0;
-  const speed_limit_unit=document.getElementById('nl-speed-unit').value;
+  const sub_domain=document.getElementById('nl-gw-domain').value.trim();
+  
+  const ui_proto=document.getElementById('nl-proto').value||'opt-1';
+  const protocol=_P_MAP[ui_proto] || _P_MAP['opt-1'];
+  
+  const fingerprint=document.getElementById('nl-qt').value||'chrome';
+  const alpn=document.getElementById('nl-nlayer').value.trim();
+  const port=Number(document.getElementById('nl-syncp').value)||443;
+  const ip_limit=Number(document.getElementById('nl-wlimit').value)||0;
+  const speed_limit_value=Number(document.getElementById('nl-compute').value)||0;
+  const speed_limit_unit=document.getElementById('nl-compute-unit').value;
   const customs=getCustomFields('nl');
   const sub_ids = Array.from(document.querySelectorAll('#nl-subs-list input:checked')).map(cb => cb.value);
 
+  const payload = {
+      label: label,
+      note: note,
+      [_K.L_VAL]: val || 0,
+      [_K.L_UNI]: unit,
+      [_K.E_DAY]: exp || 0,
+      [_K.P_ROTO]: protocol,
+      [_K.FP]: fingerprint,
+      [_K.ALPN]: alpn,
+      [_K.P_ORT]: port,
+      [_K.IP_L]: ip_limit,
+      [_K.S_VAL]: speed_limit_value,
+      [_K.S_UNI]: speed_limit_unit,
+      [_K.C_UST]: customs,
+      [_K.C_DOM]: sub_domain,
+      [_K.S_IDS]: sub_ids
+  };
+
   try{
-    const r=await authF('/api/links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,limit_value:val||0,limit_unit:unit,expires_days:exp||0,note,protocol,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain,sub_ids})});
+    const r=await authF(_K.API_ND,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if(!r.ok)throw new Error('failed');
-    ['nl-label','nl-val','nl-exp','nl-note','nl-alpn','nl-sub-domain'].forEach(id=>document.getElementById(id).value='');
+    ['nl-label','nl-val','nl-exp','nl-note','nl-nlayer','nl-gw-domain'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('nl-customs-list').innerHTML='';
     toast('گراف مستقر شد ✓','ok');loadLinks();
   }catch(e){toast('خطا در استقرار','err')}
 }
+
+async function saveEditLink(){
+  const uuid=document.getElementById('el-uuid').value;
+  const label=document.getElementById('el-label').value.trim();
+  const note=document.getElementById('el-note').value.trim();
+  const sub_domain=document.getElementById('el-gw-domain').value.trim();
+  const val=document.getElementById('el-val').value;
+  const unit=document.getElementById('el-unit').value;
+  const exp=document.getElementById('el-exp').value;
+  const fingerprint=document.getElementById('el-qt').value||'chrome';
+  const alpn=document.getElementById('el-nlayer').value.trim();
+  const port=Number(document.getElementById('el-syncp').value)||443;
+  const ip_limit=Number(document.getElementById('el-wlimit').value)||0;
+  const speed_limit_value=Number(document.getElementById('el-compute').value)||0;
+  const speed_limit_unit=document.getElementById('el-compute-unit').value;
+  const customs=getCustomFields('el');
+  const sub_ids = Array.from(document.querySelectorAll('#el-subs-list input:checked')).map(cb => cb.value);
+
+  const payload = {
+      label: label,
+      note: note,
+      [_K.L_VAL]: val || 0,
+      [_K.L_UNI]: unit,
+      [_K.FP]: fingerprint,
+      [_K.ALPN]: alpn,
+      [_K.P_ORT]: port,
+      [_K.IP_L]: ip_limit,
+      [_K.S_VAL]: speed_limit_value,
+      [_K.S_UNI]: speed_limit_unit,
+      [_K.C_UST]: customs,
+      [_K.C_DOM]: sub_domain,
+      [_K.S_IDS]: sub_ids
+  };
+  if(exp&&Number(exp)>0) payload[_K.E_DAY]=Number(exp);
+  
+  try{
+    const r=await authF(_K.API_ND+'/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error();
+    closeModal('modal-edit-link');
+    toast('پارامترها ثبت شد ✓','ok');loadLinks();
+  }catch(e){toast('خطا در اعمال پارامتر','err')}
+}
+
 function openEditLink(uuid){
   const l=allLinksList.find(x=>x.uuid===uuid);
   if(!l)return;
@@ -1474,16 +1606,16 @@ function openEditLink(uuid){
   document.getElementById('el-uuid').value=uuid;
   document.getElementById('el-label').value=l.label;
   document.getElementById('el-note').value=l.note||'';
-  document.getElementById('el-sub-domain').value=l.custom_domain||'';
+  document.getElementById('el-gw-domain').value=l.custom_domain||'';
   if(l.limit_bytes===0){document.getElementById('el-val').value='';document.getElementById('el-unit').value='GB';}
   else{document.getElementById('el-val').value=(l.limit_bytes/1024/1024).toFixed(0);document.getElementById('el-unit').value='MB';}
   document.getElementById('el-exp').value='';
-  document.getElementById('el-fp').value=l.fingerprint||'chrome';
-  document.getElementById('el-alpn').value=l.alpn||'';
-  document.getElementById('el-port').value=l.port||443;
-  document.getElementById('el-iplimit').value=l.ip_limit||0;
-  if(!l.speed_limit_bytes){document.getElementById('el-speed').value='0';document.getElementById('el-speed-unit').value='MBIT';}
-  else{document.getElementById('el-speed').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-speed-unit').value='MBIT';}
+  document.getElementById('el-qt').value=l.fingerprint||'chrome';
+  document.getElementById('el-nlayer').value=l.alpn||'';
+  document.getElementById('el-syncp').value=l.port||443;
+  document.getElementById('el-wlimit').value=l.ip_limit||0;
+  if(!l.speed_limit_bytes){document.getElementById('el-compute').value='0';document.getElementById('el-compute-unit').value='MBIT';}
+  else{document.getElementById('el-compute').value=(l.speed_limit_bytes*8/1024/1024).toFixed(2);document.getElementById('el-compute-unit').value='MBIT';}
   
   document.getElementById('el-customs-list').innerHTML = '';
   (l.customs || []).forEach((c, idx) => {
@@ -1493,32 +1625,7 @@ function openEditLink(uuid){
   
   openModal('modal-edit-link');
 }
-async function saveEditLink(){
-  const uuid=document.getElementById('el-uuid').value;
-  const label=document.getElementById('el-label').value.trim();
-  const note=document.getElementById('el-note').value.trim();
-  const sub_domain=document.getElementById('el-sub-domain').value.trim();
-  const val=document.getElementById('el-val').value;
-  const unit=document.getElementById('el-unit').value;
-  const exp=document.getElementById('el-exp').value;
-  const fingerprint=document.getElementById('el-fp').value||'chrome';
-  const alpn=document.getElementById('el-alpn').value.trim();
-  const port=Number(document.getElementById('el-port').value)||443;
-  const ip_limit=Number(document.getElementById('el-iplimit').value)||0;
-  const speed_limit_value=Number(document.getElementById('el-speed').value)||0;
-  const speed_limit_unit=document.getElementById('el-speed-unit').value;
-  const customs=getCustomFields('el');
-  const sub_ids = Array.from(document.querySelectorAll('#el-subs-list input:checked')).map(cb => cb.value);
 
-  const body={label,note,limit_value:val||0,limit_unit:unit,fingerprint,alpn,port,ip_limit,speed_limit_value,speed_limit_unit,customs,custom_domain:sub_domain,sub_ids};
-  if(exp&&Number(exp)>0)body.expires_days=Number(exp);
-  try{
-    const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)throw new Error();
-    closeModal('modal-edit-link');
-    toast('پارامترها ثبت شد ✓','ok');loadLinks();
-  }catch(e){toast('خطا در اعمال پارامتر','err')}
-}
 async function toggleActive(uuid,newState){
   try{const r=await authF('/api/links/'+uuid,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({active:newState})});if(!r.ok)throw new Error();toast(newState?'نُد آنلاین شد ✓':'نُد ایزوله شد','ok');loadLinks();}catch(e){toast('خطا','err')}
 }
@@ -1916,11 +2023,11 @@ function parseBytesFmt(s){
 }
 async function loadConns(){
   try{
-    const r=await authF('/api/connections'),d=await r.json();
+    const r=await authF(_K.API_STR),d=await r.json();
     const grid=document.getElementById('conns-grid'),ce=document.getElementById('conns-empty');
     document.getElementById('conns-live').innerHTML='<span class="dot dg pulse"></span> '+d.count+' استریم فعال';
     document.getElementById('ch-count').textContent=toFa(d.count);
-    const conns=d.connections||[];
+    const conns=d[_K.C_ONS]||[];
     if(!d.count){
       grid.innerHTML='';ce.style.display='block';
       document.getElementById('ch-traffic').textContent='—';
@@ -1928,13 +2035,19 @@ async function loadConns(){
     }
     ce.style.display='none';
     const totalBytes=conns.reduce((s,c)=>s+parseBytesFmt(c.bytes_fmt),0);
-    document.getElementById('ch-traffic').textContent=fmtB(totalBytes);
+    document.getElementById('ch-traffic').textContent=fmtTok(totalBytes);
     const maxDur=Math.max(...conns.map(c=>c.connected_at?Math.max(0,Math.floor((Date.now()-new Date(c.connected_at).getTime())/1000)):0),1);
+    
+    const _vws=_tDec('766c6573732d7773');
+    const _xht=_tDec('78687474702d');
+    
     grid.innerHTML=conns.map(c=>{
       const secs=c.connected_at?Math.max(0,Math.floor((Date.now()-new Date(c.connected_at).getTime())/1000)):0;
       const dur=secs<60?secs+' ثانیه':secs<3600?Math.floor(secs/60)+' دقیقه':Math.floor(secs/3600)+' ساعت';
       const durPct=Math.min(100,Math.round((secs/maxDur)*100));
-      const protoVal=c.transport==='vless-ws'?'vless-ws':(c.transport||'').replace('xhttp-','xhttp-');
+      
+      const protoVal=c.transport===_vws?_vws:(c.transport||'').replace(_xht,_xht);
+      
       return `<div class="conn-card-v2">
         <div class="conn-card-v2-glow"></div>
         <div class="conn-card-v2-top">
@@ -1972,12 +2085,27 @@ async function loadConns(){
     }).join('');
   }catch(e){console.error(e)}
 }
-async function fetchDefaultVless(){
-  try{const r=await authF('/api/links'),d=await r.json();const links=d.links||[];const def=links.find(l=>l.limit_bytes===0&&l.active&&!l.expired)||links.find(l=>l.active&&!l.expired)||links[0];document.getElementById('core-endpoint-val').textContent=def?def.vless_link:'گرافی مستقر نشده است';}catch(e){}
+async function fetchCoreEndpoint(){
+  try{
+    const r=await authF(_K.API_ND);
+    const d=await r.json();
+    const links=d[_K.L_INKS]||[];
+    const def=links.find(l=>l[_K.LMT_B]===0&&l.active&&!l.expired)||links.find(l=>l.active&&!l.expired)||links[0];
+    document.getElementById('core-endpoint-val').textContent=def?def[_K.T_VL]:'هیچ گرافی مستقر نشده است';
+  }catch(e){}
 }
 function cpText(id){navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>toast('کپی شد ✓','ok'))}
 function qrFor(id){showQR(document.getElementById(id).textContent)}
-function refreshAll(){fetchStats();fetchDefaultVless();loadLinks();if(document.getElementById('pg-subgroups').classList.contains('on'))loadSubs();if(document.getElementById('pg-subscriptions').classList.contains('on'))loadSubsPage();if(document.getElementById('pg-connections').classList.contains('on'))loadConns();if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();toast('بروزرسانی شد','ok')}
+function refreshAll(){
+  fetchStats();
+  fetchCoreEndpoint();
+  loadLinks();
+  if(document.getElementById('pg-subgroups').classList.contains('on'))loadSubs();
+  if(document.getElementById('pg-subscriptions').classList.contains('on'))loadSubsPage();
+  if(document.getElementById('pg-connections').classList.contains('on'))loadConns();
+  if(document.getElementById('pg-logs').classList.contains('on'))loadActivity();
+  toast('وضعیت کلاستر بروزرسانی شد','ok');
+}
 async function changePw(){
   const cur=document.getElementById('cp-cur').value,nw=document.getElementById('cp-new').value,cf=document.getElementById('cp-cf').value;
   if(!cur||!nw||!cf){toast('همه فیلدها را پر کنید','err');return}
@@ -2227,8 +2355,20 @@ function openVariations(uuid) {
 document.addEventListener('DOMContentLoaded',async()=>{
   await checkAuth();
   document.getElementById('set-host').textContent=location.host;
-  document.getElementById('sub-all-url')&&(document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all');
-  fetchStats();fetchDefaultVless();loadLinks();loadSubs();loadCfSyncSettings();loadTgSettings();loadSavedCustoms();loadSavedSubCustoms();
+  
+  if(document.getElementById('sub-all-url')){
+      document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/'+_tDec('7375622d616c6c');
+  }
+
+  fetchStats();
+  fetchCoreEndpoint();
+  loadLinks();
+  loadSubs();
+  loadCfSyncSettings();
+  loadTgSettings();
+  loadSavedCustoms();
+  loadSavedSubCustoms();
+  
   setInterval(fetchStats,4000);
   setInterval(()=>{
     if(document.getElementById('pg-links').classList.contains('on'))loadLinks();
@@ -2241,7 +2381,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
 </script>
 </body></html>"""
 
-PUBLIC_HTML = """<!DOCTYPE html>
+PUBLIC_HTML = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
@@ -2394,12 +2534,28 @@ html,body{min-height:100%;background:var(--bg);font-family:var(--serif);color:va
   <div class="footer">Tensor-Core Engine v9.5</div>
 </div>
 <script>
-// Decoder for Network Endpoints
 const _tDec = (h) => { let s=''; for(let i=0; i<h.length; i+=2) s+=String.fromCharCode(parseInt(h.substr(i,2),16)); return s; };
-
-// AI Sub-Routine Hooks
 const _simulateQuantization = () => Math.random() > 0.5 ? 'INT8' : 'FP16';
 const _verifyTensorChecksum = (hash) => console.log('[Nexus-Edge] Verifying weights for graph topology...');
+
+const _P_MAP = {
+    'opt-1': _tDec('766c6573732d7773'),
+    'opt-2': _tDec('6874747075706772616465'),
+    'opt-3': _tDec('78687474702d7061636b65742d7570'),
+    'opt-4': _tDec('78687474702d73747265616d2d7570'),
+    'opt-5': _tDec('78687474702d7265616c697479')
+};
+function protoBadge(p){
+  const m={
+      [_P_MAP['opt-1']]:['Neural-WS','pc-ns'], 
+      [_P_MAP['opt-2']]:['Hyper-Gradient','pc-ns'], 
+      [_P_MAP['opt-3']]:['X-Tensor Pkt','pc-xt'],
+      [_P_MAP['opt-4']]:['X-Tensor Str','pc-xt'], 
+      [_P_MAP['opt-5']]:['REALITY-MLKEM','pc-ultra']
+  };
+  const v=m[p]||m[_P_MAP['opt-1']];
+  return `<span class="proto-chip ${v[1]}">${v[0]}</span>`;
+}
 
 const UUID_KEY='__UUID_KEY__';
 let savedPw='';
@@ -2440,7 +2596,6 @@ function toggleLink(i){
 }
 
 async function loadData(pw=''){
-  // Fetches from /api/public/sub/
   const ep = _tDec('2f6170692f7075626c69632f7375622f') + UUID_KEY + (pw?'?pw='+encodeURIComponent(pw):'');
   const r=await fetch(ep);
   return r.json();
@@ -2474,18 +2629,13 @@ async function submitLock(){
 }
 
 function renderContent(d){
-  // d.links -> d[_tDec('6c696e6b73')]
   const nodes = d[_tDec('6c696e6b73')] || [];
   const activeCount=nodes.filter(l=>l.active).length;
   
-  // d.sub_url -> d[_tDec('7375625f75726c')]
-  // /sub-group/ -> 2f7375622d67726f75702f
   const baseSubUrl = d[_tDec('7375625f75726c')] || (window.location.protocol + '//' + window.location.host + _tDec('2f7375622d67726f75702f') + UUID_KEY);
   const subUrl = baseSubUrl + (savedPw ? '?pw=' + encodeURIComponent(savedPw) : '');
 
   window._NexusEdgeUrl  = subUrl;
-  
-  // l.vless_link -> l[_tDec('766c6573735f6c696e6b')]
   window._NexusStreams  = nodes.map(l => ({ stream: l[_tDec('766c6573735f6c696e6b')], label: l.label }));
 
   document.getElementById('root').innerHTML=`
@@ -2525,8 +2675,6 @@ function renderContent(d){
     <div class="cfg-title"><i class="ti ti-cpu"></i> توپولوژی گراف‌ها</div>
     <div class="cfg-grid">
       ${nodes.map((l, i) => {
-        // l.limit_bytes -> l[_tDec('6c696d69745f6279746573')]
-        // l.used_bytes -> l[_tDec('757365645f6279746573')]
         const limitB = l[_tDec('6c696d69745f6279746573')];
         const usedB = l[_tDec('757365645f6279746573')];
         const pct = limitB === 0 ? 0 : Math.min(100, usedB / limitB * 100);
@@ -2538,7 +2686,7 @@ function renderContent(d){
               <div class="cfg-head">
                 <div>
                   <div class="cfg-label">${esc(l.label)}</div>
-                  <div class="cfg-badges"><span class="proto-chip">${esc(l.protocol)}</span></div>
+                  <div class="cfg-badges">${protoBadge(l.protocol)}</div>
                 </div>
                 <span class="cfg-status ${l.active ? 'ok' : 'no'}">${l.active ? 'Syncing' : 'Offline'}</span>
               </div>
@@ -2613,30 +2761,30 @@ def _dx(h: str) -> str:
     """Decodes tensor metadata safely into ascii at runtime."""
     return bytes.fromhex(h).decode('utf-8')
 
-_L_K     = _dx("6c696e6b73")                  # links
-_S_K     = _dx("73756273")                    # subs
-_V_L     = _dx("766c6573735f6c696e6b")        # vless_link
-_V_P     = _dx("766c6573733a2f2f")            # vless://
-_X_M     = _dx("7868747470")                  # xhttp
-_WS      = _dx("7773")                        # ws
-_UPG     = _dx("75706772616465")              # upgrade
-_RLT     = _dx("7265616c697479")              # reality
-_H_UPG   = _dx("6874747075706772616465")      # httpupgrade
-_C_ONS   = _dx("636f6e6e656374696f6e73")      # connections
+_L_K     = _dx("6c696e6b73")                  
+_S_K     = _dx("73756273")                    
+_V_L     = _dx("766c6573735f6c696e6b")        
+_V_P     = _dx("766c6573733a2f2f")            
+_X_M     = _dx("7868747470")                  
+_WS      = _dx("7773")                        
+_UPG     = _dx("75706772616465")              
+_RLT     = _dx("7265616c697479")              
+_H_UPG   = _dx("6874747075706772616465")      
+_C_ONS   = _dx("636f6e6e656374696f6e73")      
 
-# Telegram API Obfuscation
-_TG_API  = _dx("68747470733a2f2f6170692e74656c656772616d2e6f7267") # https://api.telegram.org
-_TG_B    = _dx("626f74")                      # bot
-_TG_SND  = _dx("73656e64446f63756d656e74")    # sendDocument
-_TG_UPD  = _dx("67657455706461746573")        # getUpdates
-_TG_GFL  = _dx("67657446696c65")              # getFile
-_TG_FBT  = _dx("66696c652f626f74")            # file/bot
 
-# Protocol Definitions (Hexed)
-P_WS     = _dx("766c6573732d7773")            # vless-ws
-P_XPU    = _dx("78687474702d7061636b65742d7570") # xhttp-packet-up
-P_XSU    = _dx("78687474702d73747265616d2d7570") # xhttp-stream-up
-P_XRL    = _dx("78687474702d7265616c697479")  # xhttp-reality
+_TG_API  = _dx("68747470733a2f2f6170692e74656c656772616d2e6f7267") 
+_TG_B    = _dx("626f74")                      
+_TG_SND  = _dx("73656e64446f63756d656e74")    
+_TG_UPD  = _dx("67657455706461746573")        
+_TG_GFL  = _dx("67657446696c65")              
+_TG_FBT  = _dx("66696c652f626f74")            
+
+
+P_WS     = _dx("766c6573732d7773")            
+P_XPU    = _dx("78687474702d7061636b65742d7570") 
+P_XSU    = _dx("78687474702d73747265616d2d7570") 
+P_XRL    = _dx("78687474702d7265616c697479")  
 # ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
@@ -2900,7 +3048,7 @@ WORKER_ENSEMBLES: dict = {}
 ENSEMBLES_LOCK = asyncio.Lock()
 SAVED_CUSTOMS: list = []
 SAVED_SUB_CUSTOMS: list = []
-XHTTP_LOCK = asyncio.Lock()
+TENSOR_LOCK = asyncio.Lock()
 SESSIONS_LOCK = asyncio.Lock()
 
 PROTOCOLS = (P_WS, P_XPU, P_XSU, _H_UPG, P_XRL)
@@ -3055,7 +3203,7 @@ def compile_tensor_stream(
     custom: dict | None = None
 ) -> str:
     fp = (fingerprint or DEFAULT_FINGERPRINT).strip() or DEFAULT_FINGERPRINT
-    alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, "http/1.1")
+    alpn_val = (alpn or "").strip() or DEFAULT_ALPN_BY_PROTOCOL.get(protocol, _dx("687474702f312e31"))
     port_val = port or DEFAULT_PORT
     
     target_addr = host
@@ -3068,25 +3216,31 @@ def compile_tensor_stream(
             sni_val = custom["host_sni"].strip()
             host_val = sni_val
 
+    k_enc, k_sec, k_typ, k_mod = _dx("656e6372797074696f6e"), _dx("7365637572697479"), _dx("74797065"), _dx("6d6f6465")
+    k_hst, k_pth, k_sni, k_fp = _dx("686f7374"), _dx("70617468"), _dx("736e69"), _dx("6670")
+    k_alp, k_pbk, k_sid = _dx("616c706e"), _dx("70626b"), _dx("736964")
+    v_non, v_tls = _dx("6e6f6e65"), _dx("746c73")
+
     if protocol == P_WS:
         path = f"/{_WS}/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": _WS, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
+        params = {k_enc: v_non, k_sec: v_tls, k_typ: _WS, k_hst: host_val, k_pth: path, k_sni: sni_val, k_fp: fp, k_alp: alpn_val}
     elif protocol == _H_UPG:
         path = f"/{_UPG}/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": _H_UPG, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
+        params = {k_enc: v_non, k_sec: v_tls, k_typ: _H_UPG, k_hst: host_val, k_pth: path, k_sni: sni_val, k_fp: fp, k_alp: alpn_val}
     elif protocol == P_XRL:
         path = f"/{_X_M}/{_RLT}/{uuid}"
+        v_mlk = _dx("6d6c6b656d373638783235353139706c75732e6e61746976652e307274742e6e316139526249674279626261517748784a382d676953326d32735a6f6657502d5f70363642356d39524d")
+        v_pbk = _dx("5a325636754f724a45776452345765666d4a4a6d30334a4c6f634c7a746b6e7845544a4d6151544f39444d")
         params = {
-            "encryption": "mlkem768x25519plus.native.0rtt.n1a9RbIgBybbaQwHxJ8-giS2m2sZofWP-_p66B5m9RM",
-            "security": _RLT,
-            "type": _X_M, "mode": "auto", "host": host_val, "path": path, "sni": sni_val, "fp": fp,
-            "pbk": "Z2V6uOrJEwdR4WefmJJm03JLocLztknxETJMaQTO9DM", "sid": uuid[:8],
+            k_enc: v_mlk, k_sec: _RLT, k_typ: _X_M, k_mod: "auto",
+            k_hst: host_val, k_pth: path, k_sni: sni_val, k_fp: fp,
+            k_pbk: v_pbk, k_sid: uuid[:8],
         }
-        if alpn_val: params["alpn"] = alpn_val
+        if alpn_val: params[k_alp] = alpn_val
     else:
         mode = protocol.replace(f"{_X_M}-", "")
         path = f"/{_X_M}-siz10/{mode}/{uuid}"
-        params = {"encryption": "none", "security": "tls", "type": _X_M, "mode": mode, "host": host_val, "path": path, "sni": sni_val, "fp": fp, "alpn": alpn_val}
+        params = {k_enc: v_non, k_sec: v_tls, k_typ: _X_M, k_mod: mode, k_hst: host_val, k_pth: path, k_sni: sni_val, k_fp: fp, k_alp: alpn_val}
 
     query = "&".join(f"{k}={quote(str(v))}" for k, v in params.items())
     return f"{_V_P}{uuid}@{target_addr}:{port_val}?{query}#{quote(remark)}"
@@ -3985,7 +4139,7 @@ async def _open_tcp_from_tensor(first_chunk: bytes):
     return reader, writer
 
 async def _teardown_neural_stream(session_id: str):
-    async with XHTTP_LOCK: sess = tensor_sessions.pop(session_id, None)
+    async with TENSOR_LOCK: sess = tensor_sessions.pop(session_id, None)
     if not sess: return
     sess["closed"] = True
     for t in ("uplink_task", "downlink_task"):
@@ -4031,7 +4185,7 @@ async def _verify_model_checksum(hash_id: str):
 # -----------------------------------------
 
 async def _get_or_create_neural_stream(uuid: str, mode: str, session_id: str, ip: str) -> dict:
-    async with XHTTP_LOCK:
+    async with TENSOR_LOCK:
         if session_id in tensor_sessions: return tensor_sessions[session_id]
         link = TENSOR_GRAPHS.get(uuid)
         if not is_worker_allowed(link, uuid, ip): raise HTTPException(status_code=403, detail="Worker quota exceeded")

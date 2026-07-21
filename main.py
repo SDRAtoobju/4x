@@ -2692,7 +2692,7 @@ async def custom_405_handler(request: Request, exc):
 # ── Cluster State Management ──────────────────────────────────────────────────
 EDGE_KV_CONFIG = {
     "worker_url": os.environ.get("DEFAULT_KV_URL", "https://da-base.ali1-personal.workers.dev"),
-    "token": os.environ.get("DEFAULT_KV_TOKEN", "NexusCore")
+    "token": os.environ.get("DEFAULT_KV_TOKEN", "Sadra")
 }
 
 TELEMETRY_CONFIG = {

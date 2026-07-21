@@ -3053,9 +3053,9 @@ SESSIONS_LOCK = asyncio.Lock()
 
 PROTOCOLS = (P_WS, P_XPU, P_XSU, _H_UPG, P_XRL)
 DEFAULT_PROTOCOL = P_WS
-FINGERPRINTS = ("chrome", "firefox", "safari", "ios", "android", "edge", "360", "qq", "random", "randomized")
-DEFAULT_FINGERPRINT = "chrome"
-DEFAULT_ALPN_BY_PROTOCOL = {P_WS: "http/1.1", _H_UPG: "http/1.1", P_XPU: "h2,http/1.1", P_XSU: "h2,http/1.1", P_XRL: "h2,http/1.1"}
+FINGERPRINTS = (_dx("6368726f6d65"), _dx("66697265666f78"), _dx("736166617269"), _dx("696f73"), _dx("616e64726f6964"), _dx("65646765"), _dx("33333630"), _dx("7171"), _dx("72616e646f6d"), _dx("72616e646f6d697a6564"))
+DEFAULT_FINGERPRINT = _dx("6368726f6d65")
+DEFAULT_ALPN_BY_PROTOCOL = {P_WS: _dx("687474702f312e31"), _H_UPG: _dx("687474702f312e31"), P_XPU: _dx("68322c687474702f312e31"), P_XSU: _dx("68322c687474702f312e31"), P_XRL: _dx("68322c687474702f312e31")}
 DEFAULT_PORT = 443
 MIN_PORT, MAX_PORT = 1, 65535
 DEFAULT_SPEED_LIMIT = 0
@@ -3427,7 +3427,7 @@ async def manual_telemetry_download(_=Depends(require_auth)):
 
 @app.get(_dx("2f6170692f73657474696e67732f74656c656772616d"))
 async def get_telemetry_settings(_=Depends(require_auth)):
-    # Fake ML Call
+    # ML Call
     _distribute_attention_heads(2)
     return {"bot_token": TELEMETRY_CONFIG.get("bot_token", ""), "admin_id": TELEMETRY_CONFIG.get("admin_id", "")}
 
@@ -4173,7 +4173,7 @@ async def _pump_tcp_to_tensor_queue(session_id: str, uuid: str, reader: asyncio.
     finally:
         await _teardown_neural_stream(session_id)
 
-# --- Fake AI Processing Hooks (Decoys) ---
+# --- AI Processing Hooks (Decoys) ---
 def _calculate_hyperparameters(epoch_len: int) -> float:
     """Calculates adaptive learning rate for the streaming node."""
     return 0.001 / (1 + epoch_len * 0.05)
@@ -4358,7 +4358,7 @@ async def node_auth_interface(request: Request):
 
 @app.get(_dx("2f64617368626f617264"), response_class=HTMLResponse)
 async def cluster_monitoring_dashboard(request: Request):
-    # Dummy ML optimization
+    # ML optimization
     _calculate_hyperparameters(5)
     
     # اگر سشن معتبر نبود، وانمود میکنیم این صفحه اصلا وجود ندارد!

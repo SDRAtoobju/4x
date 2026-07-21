@@ -1393,12 +1393,12 @@ function closeModal(id){document.getElementById(id).classList.remove('open')}
 async function fetchStats(){
   try{
     const r=await authF(_tDec('2f7374617473')),d=await r.json();
-    document.getElementById('m-conns').textContent=d.active_connections;
-    document.getElementById('conns-nb').textContent=d.active_connections;
+    document.getElementById('m-streams').textContent=d.active_connections;
+    document.getElementById('streams-nb').textContent=d.active_connections;
     document.getElementById('m-traffic').innerHTML=(d.total_traffic_mb||0).toFixed(1)+'<span class="m-unit">M-Tok</span>';
-    document.getElementById('m-alinks').textContent=d.active_links??'—';
+    document.getElementById('m-anodes').textContent=d.active_links??'—';
     document.getElementById('m-lsub').textContent='از '+d.links_count+' گراف';
-    document.getElementById('m-subs').textContent=d.subs_count??'—';
+    document.getElementById('m-ens').textContent=d.subs_count??'—';
     document.getElementById('errs-badge').textContent=d.total_errors+' آنامولی';
     document.getElementById('uptime-inline').textContent=d.uptime;
     document.getElementById('uptime-badge').textContent='Tensor-Core · '+d.uptime;
@@ -1453,7 +1453,7 @@ async function loadLinks(){
         `).join('');
     };
     renderSubCheckboxes('nl-subs-list', subs);
-    document.getElementById('links-nb').textContent=links.length;
+    document.getElementById('nodes-nb').textContent=links.length;
     document.getElementById('links-pg-cnt').textContent=toFa(links.length)+' گراف';
     document.getElementById('lsummary-badge').textContent=toFa(links.length);
     const grid=document.getElementById('links-grid'),empty=document.getElementById('links-empty');
@@ -1643,7 +1643,7 @@ async function loadSubs(){
     const r=await authF('/api/subs'),d=await r.json();
     const subs=d.subs||[];
     allSubsRaw=subs;
-    document.getElementById('subs-nb').textContent=subs.length;
+    document.getElementById('ens-nb').textContent=subs.length; 
     document.getElementById('subs-pg-cnt').textContent=toFa(subs.length)+' خوشه';
     renderSubsGrid(subs);
   }catch(e){console.error(e)}
@@ -1990,7 +1990,7 @@ async function saveSubLinks(){
 }
 
 async function loadSubsPage(){
-  document.getElementById('sub-all-url').textContent=location.protocol+'//'+location.host+'/sub-all';
+  document.getElementById('global-reg-url').textContent=location.protocol+'//'+location.host+'/sub-all';
   try{
     const r=await authF('/api/subs'),d=await r.json();
     const subs=d.subs||[];
